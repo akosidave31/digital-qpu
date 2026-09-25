@@ -64,6 +64,12 @@ def calibrate(device, day):
                                gate_error_1q=g1, gate_error_2q=g2, readout_error=ro, zz=zz)
 
 
+def tls_days(device, days):
+    """Boolean matrix [day, qubit]: which qubits have a bad day (same draws as calibrate), fast."""
+    seed = zlib.crc32(device.name.encode())
+    return np.random.default_rng([seed, 2]).random((days, 2 * device.n_qubits))[:, :device.n_qubits] < TLS_PROB
+
+
 def bad_qubits(device, day):
     """Qubits hit by a TLS defect on this day."""
     _, tls, _ = _series(device, int(day))

@@ -93,7 +93,8 @@ Measure it yourself, like a lab would:
   errors grow ~2x); the Ramsey experiment measures back the built-in ZZ rates (within 5%).
 - Drift statistics are realistic (centred, ~15% spread, day-to-day correlation, ~5% bad days), and
   randomized benchmarking detects a bad day and measures that day's actual error rate.
-- Randomized benchmarking measures back the error per gate the device is built with (within 20%).
+- Randomized benchmarking measures back the error per gate the device is built with (within 5%),
+  and that built-in value agrees with an exact simulator calculation (see EXPERIMENTS.md).
 - Against Qiskit: the same OpenQASM text through Qiskit's own parser and simulator gives the same
   probabilities (1e-9), and the noisy execution - decoherence, gate errors and crosstalk - matches a layer-by-layer Qiskit Aer
   reference (1e-10).
@@ -109,8 +110,10 @@ Mid-circuit measurement, `if`, `reset`, custom `gate` definitions. Routing is si
 2. Gate errors, realistic timing, randomized benchmarking (v0.2.0)
 3. Native gates, compilation and automatic qubit routing (v0.3.0)
 4. Crosstalk: always-on ZZ and drive spill-over, Ramsey measurement (v0.4.0)
-5. Calibration drift, daily data sheets, bad days (v0.5.0)
+5. Calibration drift, daily data sheets, bad days (v0.5.0); investigation fixes (v0.5.1)
 6. Web API: submit jobs over HTTP, like a quantum cloud service
 7. App on top of the API
+
+See EXPERIMENTS.md for investigations and the decisions they led to.
 
 MIT license.

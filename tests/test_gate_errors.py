@@ -58,9 +58,18 @@ def test_fit_decay_recovers_parameters():
 def test_rb_measures_pure_gate_error():
     dev = Device("dep", 1, gate_error_1q=[0.004])
     res = randomized_benchmarking(dev, 0, lengths=(1, 20, 60, 120), n_seq=8, seed=1)
-    assert abs(res["epg"] - 0.002) / 0.002 < 0.1
+    assert abs(res["epg"] - 0.002) / 0.002 < 0.05
 
 
 def test_rb_measures_what_dq5_is_built_with():
     res = randomized_benchmarking(DEVICES["dq-5"], 0, lengths=(1, 30, 90, 180), n_seq=8, seed=2)
-    assert abs(res["epg"] - res["predicted_epg"]) / res["predicted_epg"] < 0.2, res
+    assert abs(res["epg"] - res["predicted_epg"]) / res["predicted_epg"] < 0.05, res     # was 20% before v0.5.1
+
+
+def test_free_fit_is_the_unreliable_one():
+    """v0.5.1 investigation: with weak noise and short sequences a free fit of B biases the result."""
+    dev = Device("tp", 5, T_phi=DEVICES["dq-5"].T_phi, gate_time_1q=DEVICES["dq-5"].gate_time_1q)
+    res = randomized_benchmarking(dev, 0)
+    fixed = abs(res["epg"] / res["predicted_epg"] - 1)
+    free = abs(res["epg_free"] / res["predicted_epg"] - 1)
+    assert fixed < 0.05 and free > 0.5

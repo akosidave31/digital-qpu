@@ -1,7 +1,11 @@
 """Randomized benchmarking (RB): the standard lab experiment for measuring error per gate.
 Run random sequences of m single-qubit Clifford operations followed by the one Clifford that undoes
 them. Ideally the qubit returns to |0>; with errors, P(0) decays as A * p^m + B.
-Error per Clifford r = (1 - p) / 2; error per physical gate ~ r / (average gates per Clifford)."""
+Error per Clifford r = (1 - p) / 2; error per physical gate ~ r / (average gates per Clifford).
+
+Fit: B (the level reached after very long sequences) is FIXED at its known value, 1/2 corrected for
+readout error. A free 3-parameter fit is also reported, but with short sequences B is poorly
+determined and biases p (v0.5.1 investigation: +19% on dq-5, up to +130% with weak noise)."""
 import numpy as np
 from digital_qubit import H, S, I2
 from .qasm import Program, Op
@@ -62,6 +66,23 @@ def fit_decay(ms, ys):
     return float(ps[k]), float(A[k]), float(B[k])
 
 
+def fit_decay_fixed_b(ms, ys, B):
+    """Least-squares fit of y = A p^m + B with B known (vectorized grid over p, exact A)."""
+    ms, ys = np.asarray(ms, float), np.asarray(ys, float)
+    ps = np.linspace(0.9, 0.999999, 20000)
+    X = ps[:, None] ** ms[None, :]
+    A = (X * (ys - B)).sum(1) / (X * X).sum(1)
+    err = ((A[:, None] * X + B - ys) ** 2).sum(1)
+    k = int(np.argmin(err))
+    return float(ps[k]), float(A[k])
+
+
+def asymptote(device1q):
+    """Long-sequence survival: a fully mixed qubit (1/2) seen through the readout error."""
+    p01, p10 = device1q.readout_error[0] if device1q.readout_error is not None else (0.0, 0.0)
+    return 0.5 * (1 - p01) + 0.5 * p10
+
+
 def predicted_epg(device, q):
     """First-order expectation: gate error (p/2) + decoherence during the gate."""
     t = device.gate_time_1q
@@ -85,8 +106,11 @@ def randomized_benchmarking(device, qubit=0, lengths=(1, 20, 60, 120, 200), n_se
             prog = Program(1, 1, [Op(g, (0,)) for g in names], {0: 0})
             vals.append(probabilities(prog, dev1)["0"])
         survival.append(float(np.mean(vals)))
-    p, A, B = fit_decay(lengths, survival)
+    p_free, A_free, B_free = fit_decay(lengths, survival)
+    B = asymptote(dev1)
+    p, A = fit_decay_fixed_b(lengths, survival, B)
     epc = (1 - p) / 2
-    return {"qubit": qubit, "lengths": list(lengths), "survival": survival, "p": float(p), "A": float(A),
-            "B": float(B), "epc": float(epc), "epg": float(epc / AVG_GATES),
+    return {"qubit": qubit, "lengths": list(lengths), "survival": survival, "p": p, "A": A, "B": B,
+            "epc": float(epc), "epg": float(epc / AVG_GATES),
+            "p_free": float(p_free), "B_free": float(B_free), "epg_free": float((1 - p_free) / 2 / AVG_GATES),
             "predicted_epg": float(predicted_epg(device, qubit)), "avg_gates_per_clifford": AVG_GATES}

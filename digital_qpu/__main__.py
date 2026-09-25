@@ -93,9 +93,10 @@ def main(argv=None):
         print(f"randomized benchmarking on {a.device}, qubit {a.qubit}")
         for m, y in zip(res["lengths"], res["survival"]):
             print(f"  {m:>4} Cliffords   P(0) = {y:.4f}  {'#' * round(40 * y)}")
-        print(f"fit: P(0) = {res['A']:.3f} * {res['p']:.5f}^m + {res['B']:.3f}")
+        print(f"fit: P(0) = {res['A']:.3f} * {res['p']:.5f}^m + {res['B']:.3f}   (B fixed from readout calibration)")
         print(f"error per Clifford  {res['epc']:.2e}")
         print(f"error per gate      {res['epg']:.2e}   (built-in expectation {res['predicted_epg']:.2e})")
+        print(f"free 3-parameter fit would give {res['epg_free']:.2e} (B = {res['B_free']:.3f}; unreliable with short sequences)")
         return 0
     if a.cmd == "devices":
         for d in DEVICES.values():

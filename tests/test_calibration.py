@@ -1,5 +1,6 @@
 import numpy as np
-from digital_qpu import calibrate, bad_qubits, history, DEVICES, QPU, randomized_benchmarking
+from digital_qpu import calibrate, bad_qubits, history, tls_days, DEVICES, QPU, randomized_benchmarking
+from math import comb
 from digital_qpu.calibration import RHO, SIGMA, TLS_PROB
 
 DQ5 = DEVICES["dq-5"]
@@ -64,7 +65,8 @@ def test_rb_detects_a_bad_day():
     assert bad_rb["epg"] > 1.3 * good_rb["epg"]                         # benchmarking notices
     measured_ratio = bad_rb["epg"] / good_rb["epg"]
     expected_ratio = bad_rb["predicted_epg"] / good_rb["predicted_epg"]
-    assert abs(measured_ratio / expected_ratio - 1) < 0.25               # and measures how much worse
+    assert abs(measured_ratio / expected_ratio - 1) < 0.1                # and measures how much worse
+    assert abs(bad_rb["epg"] / bad_rb["predicted_epg"] - 1) < 0.1        # absolute value too (v0.5.1)
 
 
 def test_qpu_and_history():
@@ -80,3 +82,17 @@ def test_cli(capsys):
     assert "dq-5@day5" in capsys.readouterr().out
     assert main(["history", "--qubit", "0", "--days", "5"]) == 0
     assert main(["run", "examples/bell.qasm", "--day", "5", "--shots", "50", "--seed", "1"]) == 0
+
+
+def test_bad_days_are_independent_across_qubits():
+    D, nq, p = 20000, DQ5.n_qubits, TLS_PROB
+    bad = tls_days(DQ5, D)
+    assert all(bad[d].tolist() == [q in bad_qubits(DQ5, d) for q in range(nq)] for d in (0, 1, 17))
+    assert np.all(np.abs(bad.mean(0) - p) < 0.006)
+    exp_pair = p * p * D
+    for i in range(nq):
+        for j in range(i + 1, nq):
+            assert abs(np.sum(bad[:, i] & bad[:, j]) - exp_pair) < 3.5 * np.sqrt(exp_pair)
+    k = bad.sum(1)
+    e3 = D * sum(comb(nq, m) * p ** m * (1 - p) ** (nq - m) for m in range(3, nq + 1))
+    assert abs(np.sum(k >= 3) - e3) < 4 * np.sqrt(e3)
