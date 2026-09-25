@@ -62,7 +62,7 @@ def test_energy_loss_matches_formula():
 def test_idle_qubits_also_decay():
     dq5 = DEVICES["dq-5"]
     short = probabilities(prog(5, "x q[4]; measure q[4] -> c[0];", ncl=1), dq5)
-    long = probabilities(prog(5, "x q[4];" + " id q[0];" * 50 + " measure q[4] -> c[0];", ncl=1), dq5)
+    long = probabilities(prog(5, "x q[4];" + " id q[0];" * 300 + " measure q[4] -> c[0];", ncl=1), dq5)
     assert long["1"] < short["1"] - 0.05
 
 

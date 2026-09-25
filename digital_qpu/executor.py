@@ -1,9 +1,10 @@
 """Run a Program on a Device using digital_qubit as the qubits.
-Gates are scheduled into time layers (ASAP). After each layer, EVERY qubit experiences
-T1/T_phi noise for that layer's duration (busy or idle). Readout error is applied at measurement.
+Gates are scheduled into time layers (ASAP). Each gate is followed by its depolarizing gate error
+(same convention as Qiskit Aer; 'id' is an idle and has none). After each layer, EVERY qubit
+experiences T1/T_phi noise for that layer's duration (busy or idle). Readout error at measurement.
 Bit order of results follows Qiskit: classical bit 0 is the RIGHTMOST character."""
 import numpy as np
-from digital_qubit import NQubit, NDensity, PairNoise, gate_matrix
+from digital_qubit import NQubit, NDensity, PairNoise, gate_matrix, I2, X, Y, Z
 from .qasm import QasmError
 
 MAX_NOISY_QUBITS = 10
@@ -44,11 +45,40 @@ def _apply(reg, op):
     return reg.apply1(gate_matrix(name, op.params[0] if op.params else None), op.qubits[0])
 
 
+_PAULI = [I2, X, Y, Z]
+
+
+def depolarize_1q(reg, q, p):
+    """rho -> (1 - p) rho + p I/2 on qubit q."""
+    K = [np.sqrt(1 - 3 * p / 4) * I2, np.sqrt(p / 4) * X, np.sqrt(p / 4) * Y, np.sqrt(p / 4) * Z]
+    return reg.channel1(K, q)
+
+
+def depolarize_2q(reg, a, b, p):
+    """rho -> (1 - p) rho + p I/4 (x) Tr_ab(rho) on qubits a, b."""
+    out = (1 - 15 * p / 16) * reg.rho
+    for i in range(4):
+        for j in range(4):
+            if i or j:
+                out = out + (p / 16) * reg.apply2(np.kron(_PAULI[i], _PAULI[j]), a, b).rho
+    return NDensity(reg.n, out)
+
+
+def _gate_error(reg, op, device):
+    if op.name == "id":
+        return reg
+    if len(op.qubits) == 1:
+        p = device.error_1q(op.qubits[0])
+        return depolarize_1q(reg, op.qubits[0], p) if p > 0 else reg
+    p = device.error_2q(*op.qubits)
+    return depolarize_2q(reg, *op.qubits, p) if p > 0 else reg
+
+
 def final_state(program, device):
-    """NQubit (no decoherence) or NDensity (with decoherence) after all gates and noise."""
+    """NQubit (noise-free gates) or NDensity (decoherence and/or gate errors) after all gates."""
     layers = schedule(program, device)
     n = program.n_qubits
-    if not device.has_decoherence:
+    if not device.needs_density:
         reg = NQubit(n)
         for layer in layers:
             for op in layer:
@@ -60,7 +90,7 @@ def final_state(program, device):
     inf = float("inf")
     for layer in layers:
         for op in layer:
-            reg = _apply(reg, op)
+            reg = _gate_error(_apply(reg, op), op, device)
         d = layer_duration(layer, device)
         if d > 0:
             for q in range(n):

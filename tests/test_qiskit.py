@@ -66,3 +66,28 @@ def test_noisy_execution_matches_qiskit_layer_by_layer():
                 ch = thermal_relaxation_error(dev.T1[q], Damping.T2(dev.T1[q], dev.T_phi[q]), d).to_quantumchannel()
                 ref = ref.evolve(ch, qargs=[n - 1 - q])
         assert np.max(np.abs(final_state(program, dev).rho - ref.data)) < 1e-10
+
+
+def test_gate_errors_match_qiskit_layer_by_layer():
+    from qiskit_aer.noise import depolarizing_error
+    rng = np.random.default_rng(3)
+    n = 3
+    dev = Device("t", n, T1=[50.0, 40.0, 60.0], T_phi=[40.0, 30.0, 45.0], gate_time_1q=0.05, gate_time_2q=0.3,
+                 gate_error_1q=[0.002, 0.003, 0.001], gate_error_2q=0.02)
+    for _ in range(10):
+        program = parse(rand_qasm(rng, n, 20))
+        ref = DensityMatrix.from_label("0" * n)
+        for layer in schedule(program, dev):
+            for op in layer:
+                qc = QuantumCircuit(n)
+                _qiskit_gate(qc, op, n)
+                ref = ref.evolve(qc)
+                q = [n - 1 - x for x in op.qubits]
+                if op.name != "id":
+                    lam = dev.error_1q(op.qubits[0]) if len(q) == 1 else dev.error_2q(*op.qubits)
+                    ref = ref.evolve(depolarizing_error(lam, len(q)).to_quantumchannel(), qargs=q)
+            d = layer_duration(layer, dev)
+            for x in range(n):
+                ch = thermal_relaxation_error(dev.T1[x], Damping.T2(dev.T1[x], dev.T_phi[x]), d).to_quantumchannel()
+                ref = ref.evolve(ch, qargs=[n - 1 - x])
+        assert np.max(np.abs(final_state(program, dev).rho - ref.data)) < 1e-10
