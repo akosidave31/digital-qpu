@@ -37,6 +37,7 @@ Results use Qiskit's bit order: classical bit 0 is the rightmost character.
 | `device.py` | a chip's calibration sheet: per-qubit T1/T_phi, gate times, readout error, wiring |
 | `executor.py` | schedules gates into time layers; each gate has its own error (depolarizing, as in Qiskit Aer); after each layer every qubit (busy or idle) feels T1/T2 noise for that time; readout error at measurement |
 | `compiler.py` | like a real transpiler: routes qubits with SWAPs when they aren't wired together, translates to the chip's native gates (rz, sx, x, cz), merges single-qubit gates and uses as few sx pulses as possible |
+| `crosstalk.py` | Ramsey experiment that measures always-on ZZ crosstalk between two qubits, like a lab |
 | `rb.py` | randomized benchmarking: measures the device's error per gate, like a real lab |
 | `qpu.py` | jobs: submit a program, get a job id, status and result |
 
@@ -55,6 +56,15 @@ Devices: `ideal` (20 qubits, no noise) and `dq-5` (5 noisy qubits in a line q0-q
 Two-qubit gate errors: q0-q1 1.0%, q1-q2 1.2%, q2-q3 0.9%, q3-q4 1.4%.
 Native gates: rz (virtual: zero time, zero error), sx, x, cz. Programs are compiled automatically.
 
+Crosstalk (coherent errors, like real superconducting chips):
+- always-on ZZ between wired neighbours: q0-q1 0.10, q1-q2 0.15, q2-q3 0.08, q3-q4 0.12 rad per
+  time unit - a qubit's phase drifts depending on whether its neighbour is 0 or 1
+- drive crosstalk: 1% of every sx/x pulse spills onto wired neighbours
+
+Measure the ZZ yourself:
+
+    digital-qpu zz --pair 0 1
+
 See what the chip will actually run:
 
     digital-qpu compile examples/ghz5.qasm
@@ -69,9 +79,11 @@ Measure it yourself, like a lab would:
 - Noise formulas: dephasing and energy loss during gates match the exact expressions.
 - Compiled programs give identical results to the originals (random circuits, including routing),
   checked against both the uncompiled program and Qiskit.
+- Crosstalk follows the exact formulas; coherent errors grow ~4x when a circuit doubles (random
+  errors grow ~2x); the Ramsey experiment measures back the built-in ZZ rates (within 5%).
 - Randomized benchmarking measures back the error per gate the device is built with (within 20%).
 - Against Qiskit: the same OpenQASM text through Qiskit's own parser and simulator gives the same
-  probabilities (1e-9), and the noisy execution - decoherence and gate errors - matches a layer-by-layer Qiskit Aer
+  probabilities (1e-9), and the noisy execution - decoherence, gate errors and crosstalk - matches a layer-by-layer Qiskit Aer
   reference (1e-10).
 
 ## Not supported yet
@@ -84,8 +96,9 @@ Mid-circuit measurement, `if`, `reset`, custom `gate` definitions. Routing is si
 1. Engine + command line (v0.1.0)
 2. Gate errors, realistic timing, randomized benchmarking (v0.2.0)
 3. Native gates, compilation and automatic qubit routing (v0.3.0)
-4. Crosstalk and calibration drift
-5. Web API: submit jobs over HTTP, like a quantum cloud service
-6. App on top of the API
+4. Crosstalk: always-on ZZ and drive spill-over, Ramsey measurement (v0.4.0)
+5. Calibration drift
+6. Web API: submit jobs over HTTP, like a quantum cloud service
+7. App on top of the API
 
 MIT license.

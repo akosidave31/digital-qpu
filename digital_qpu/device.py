@@ -17,6 +17,8 @@ class Device:
     gate_error_2q: object = None    # dict {(a, b): p} per pair, or one float for all pairs
     native_gates: tuple = None      # e.g. ("rz", "sx", "x", "cz"); None = runs any gate directly
     virtual_rz: bool = False        # rz is a software frame change: zero time, zero error
+    zz: object = None               # always-on ZZ rate (rad per time unit): {(a, b): rate} or one float for all wired pairs
+    drive_crosstalk: float = 0.0    # fraction of each sx/x pulse that spills onto wired neighbours
     description: str = ""
 
     @property
@@ -42,11 +44,28 @@ class Device:
     def allows(self, a, b):
         return self.coupling is None or (a, b) in self.coupling or (b, a) in self.coupling
 
+    def zz_pairs(self, n=None):
+        """[((a, b), rate)] for ZZ-coupled pairs (only pairs inside the first n qubits)."""
+        n = self.n_qubits if n is None else n
+        if self.zz is None:
+            return []
+        if isinstance(self.zz, dict):
+            items = list(self.zz.items())
+        else:
+            items = [(pair, float(self.zz)) for pair in (self.coupling or [])]
+        return [((a, b), r) for (a, b), r in items if a < n and b < n and r != 0]
+
+    def neighbours(self, q, n=None):
+        n = self.n_qubits if n is None else n
+        return sorted(({b if a == q else a for a, b in (self.coupling or []) if q in (a, b)} - {q}) & set(range(n)))
+
     def describe(self):
         return {"name": self.name, "n_qubits": self.n_qubits, "T1": self.T1, "T_phi": self.T_phi,
                 "gate_time_1q": self.gate_time_1q, "gate_time_2q": self.gate_time_2q,
                 "readout_error": self.readout_error, "coupling": self.coupling,
                 "native_gates": self.native_gates, "virtual_rz": self.virtual_rz,
+                "zz": ({f"{a}-{b}": v for (a, b), v in self.zz.items()} if isinstance(self.zz, dict) else self.zz),
+                "drive_crosstalk": self.drive_crosstalk,
                 "gate_error_1q": self.gate_error_1q,
                 "gate_error_2q": ({f"{a}-{b}": v for (a, b), v in self.gate_error_2q.items()}
                                   if isinstance(self.gate_error_2q, dict) else self.gate_error_2q),
@@ -64,7 +83,8 @@ DEVICES = {
                    gate_error_1q=[6e-4, 8e-4, 5e-4, 9e-4, 7e-4],
                    gate_error_2q={(0, 1): 0.010, (1, 2): 0.012, (2, 3): 0.009, (3, 4): 0.014},
                    native_gates=("rz", "sx", "x", "cz"), virtual_rz=True,
-                   description="noisy 5-qubit line: q0-q1-q2-q3-q4 (native rz sx x cz; decoherence, gate and readout errors)"),
+                   zz={(0, 1): 0.10, (1, 2): 0.15, (2, 3): 0.08, (3, 4): 0.12}, drive_crosstalk=0.01,
+                   description="noisy 5-qubit line: q0-q1-q2-q3-q4 (native rz sx x cz; decoherence, gate, readout errors, crosstalk)"),
 }
 
 

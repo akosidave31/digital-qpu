@@ -1,13 +1,15 @@
 """Command line:  python -m digital_qpu devices
                   python -m digital_qpu run FILE.qasm [--device dq-5] [--shots 1024] [--seed N] [--json]
                   python -m digital_qpu compile FILE.qasm [--device dq-5]  (show what the chip will run)
-                  python -m digital_qpu rb [--device dq-5] [--qubit 0]      (randomized benchmarking)"""
+                  python -m digital_qpu rb [--device dq-5] [--qubit 0]      (randomized benchmarking)
+                  python -m digital_qpu zz [--device dq-5] [--pair 0 1]     (measure ZZ crosstalk)"""
 import argparse
 import json
 import sys
 from .device import DEVICES
 from .qpu import QPU
 from .rb import randomized_benchmarking
+from .crosstalk import zz_ramsey
 from .device import get_device
 from .qasm import parse
 from .compiler import transpile, to_qasm
@@ -31,7 +33,18 @@ def main(argv=None):
     b.add_argument("--device", default="dq-5")
     b.add_argument("--qubit", type=int, default=0)
     b.add_argument("--seed", type=int, default=0)
+    z = sub.add_parser("zz", help="Ramsey experiment: measure ZZ crosstalk between two qubits")
+    z.add_argument("--device", default="dq-5")
+    z.add_argument("--pair", type=int, nargs=2, default=[0, 1])
     a = ap.parse_args(argv)
+    if a.cmd == "zz":
+        res = zz_ramsey(get_device(a.device), *a.pair)
+        print(f"ZZ Ramsey on {a.device}, qubits {a.pair[0]}-{a.pair[1]}")
+        for t, d in zip(res["times"], res["phase_diff"]):
+            print(f"  wait {t:>4g}   phase difference {d:+.4f} rad")
+        print(f"measured ZZ rate  {res['zz_measured']:.4f} rad per time unit")
+        print(f"built-in ZZ rate  {res['zz_configured']:.4f}")
+        return 0
     if a.cmd == "compile":
         dev = get_device(a.device)
         with open(a.file, encoding="utf-8") as f:

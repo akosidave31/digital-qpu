@@ -105,3 +105,41 @@ def test_compiled_programs_match_qiskit_on_original():
         ref = Statevector(QuantumCircuit.from_qasm_str(text.replace("measure q -> c;", ""))).probabilities_dict()
         for k in set(ours) | set(ref):
             assert abs(ours.get(k, 0.0) - ref.get(k, 0.0)) < 1e-9
+
+
+def test_crosstalk_matches_qiskit_layer_by_layer():
+    from qiskit_aer.noise import depolarizing_error
+    rng = np.random.default_rng(5)
+    n = 3
+    pairs = [(0, 1), (1, 2), (0, 2)]
+    dev = Device("xt", n, T1=[50.0, 40.0, 60.0], T_phi=[40.0, 30.0, 45.0], gate_time_1q=0.05, gate_time_2q=0.3,
+                 gate_error_1q=[0.002, 0.003, 0.001], gate_error_2q=0.02, coupling=pairs,
+                 zz={(0, 1): 0.2, (1, 2): 0.3, (0, 2): 0.1}, drive_crosstalk=0.03)
+    angle = {"sx": np.pi / 2, "x": np.pi}
+    for _ in range(10):
+        text = rand_qasm(rng, n, 20).replace("h q[", "sx q[")
+        program = parse(text)
+        ref = DensityMatrix.from_label("0" * n)
+        for layer in schedule(program, dev):
+            for op in layer:
+                qc = QuantumCircuit(n)
+                _qiskit_gate(qc, op, n)
+                ref = ref.evolve(qc)
+                q = [n - 1 - x for x in op.qubits]
+                if op.name != "id":
+                    lam = dev.error_1q(op.qubits[0]) if len(q) == 1 else dev.error_2q(*op.qubits)
+                    ref = ref.evolve(depolarizing_error(lam, len(q)).to_quantumchannel(), qargs=q)
+                if op.name in angle:
+                    for m in dev.neighbours(op.qubits[0], n):
+                        qc = QuantumCircuit(n)
+                        qc.rx(dev.drive_crosstalk * angle[op.name], n - 1 - m)
+                        ref = ref.evolve(qc)
+            d = layer_duration(layer, dev)
+            qc = QuantumCircuit(n)
+            for (a, b), rate in dev.zz_pairs(n):
+                qc.rzz(rate * d / 2, n - 1 - a, n - 1 - b)
+            ref = ref.evolve(qc)
+            for x in range(n):
+                ch = thermal_relaxation_error(dev.T1[x], Damping.T2(dev.T1[x], dev.T_phi[x]), d).to_quantumchannel()
+                ref = ref.evolve(ch, qargs=[n - 1 - x])
+        assert np.max(np.abs(final_state(program, dev).rho - ref.data)) < 1e-10

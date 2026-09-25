@@ -1,10 +1,11 @@
 """Run a Program on a Device using digital_qubit as the qubits.
 Gates are scheduled into time layers (ASAP). Each gate is followed by its depolarizing gate error
-(same convention as Qiskit Aer; 'id' is an idle and has none). After each layer, EVERY qubit
-experiences T1/T_phi noise for that layer's duration (busy or idle). Readout error at measurement.
+(same convention as Qiskit Aer; 'id' is an idle and has none) and, for sx/x pulses, by drive
+crosstalk onto wired neighbours. After each layer, for that layer's duration: always-on ZZ between
+wired pairs, then T1/T_phi noise on EVERY qubit (busy or idle). Readout error at measurement.
 Bit order of results follows Qiskit: classical bit 0 is the RIGHTMOST character."""
 import numpy as np
-from digital_qubit import NQubit, NDensity, PairNoise, gate_matrix, I2, X, Y, Z
+from digital_qubit import NQubit, NDensity, PairNoise, gate_matrix, rx, I2, X, Y, Z
 from .qasm import QasmError
 
 MAX_NOISY_QUBITS = 10
@@ -87,29 +88,53 @@ def _gate_error(reg, op, device):
     return depolarize_2q(reg, *op.qubits, p) if p > 0 else reg
 
 
+_PULSE_ANGLE = {"sx": np.pi / 2, "x": np.pi}
+
+
+def _spillover(reg, op, device, n):
+    """Drive crosstalk: a fraction of an sx/x pulse also rotates each wired neighbour."""
+    if not device.drive_crosstalk or op.name not in _PULSE_ANGLE:
+        return reg
+    U = rx(device.drive_crosstalk * _PULSE_ANGLE[op.name])
+    for m in device.neighbours(op.qubits[0], n):
+        reg = reg.apply1(U, m)
+    return reg
+
+
+def zz_unitary(theta):
+    """exp(-i theta/2 Z(x)Z), the same as Qiskit's RZZ(theta)."""
+    return np.diag(np.exp(-0.5j * theta * np.array([1, -1, -1, 1])))
+
+
+def _zz(reg, d, device, n):
+    for (a, b), rate in device.zz_pairs(n):
+        reg = reg.apply2(zz_unitary(rate * d / 2), a, b)
+    return reg
+
+
 def final_state(program, device):
-    """NQubit (noise-free gates) or NDensity (decoherence and/or gate errors) after all gates."""
+    """NQubit (no stochastic noise) or NDensity (decoherence and/or gate errors) after all gates."""
     layers = schedule(program, device)
     n = program.n_qubits
-    if not device.needs_density:
-        reg = NQubit(n)
-        for layer in layers:
-            for op in layer:
-                reg = _apply(reg, op)
-        return reg
-    if n > MAX_NOISY_QUBITS:
+    density = device.needs_density
+    if density and n > MAX_NOISY_QUBITS:
         raise QasmError(f"noisy simulation is limited to {MAX_NOISY_QUBITS} qubits (program has {n})")
-    reg = NDensity(n)
+    reg = NDensity(n) if density else NQubit(n)
     inf = float("inf")
     for layer in layers:
         for op in layer:
-            reg = _gate_error(_apply(reg, op), op, device)
+            reg = _apply(reg, op)
+            if density:
+                reg = _gate_error(reg, op, device)
+            reg = _spillover(reg, op, device, n)
         d = layer_duration(layer, device)
         if d > 0:
-            for q in range(n):
-                T1 = device.T1[q] if device.T1 is not None else inf
-                Tp = device.T_phi[q] if device.T_phi is not None else None
-                reg = reg.channel1(PairNoise().kraus(d, T1, Tp), q)
+            reg = _zz(reg, d, device, n)
+            if device.has_decoherence:
+                for q in range(n):
+                    T1 = device.T1[q] if device.T1 is not None else inf
+                    Tp = device.T_phi[q] if device.T_phi is not None else None
+                    reg = reg.channel1(PairNoise().kraus(d, T1, Tp), q)
     return reg
 
 
