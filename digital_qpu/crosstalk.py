@@ -1,7 +1,9 @@
 """Measure always-on ZZ crosstalk the way a lab does: a Ramsey experiment.
 Put qubit a on the equator, let it wait, and track its phase - once with neighbour b in |0>, once
 in |1>. ZZ makes the phase drift in opposite directions; the difference grows at exactly the ZZ rate.
-Readout error is corrected with the device's known readout calibration, as labs do."""
+Readout error is corrected with the device's known readout calibration, as labs do.
+The spectator's own T1 decay (|1> -> |0>) slows the phase difference over time, so the rate is the
+INITIAL slope (quadratic fit), not a straight-line average."""
 import numpy as np
 from .qasm import Program, Op
 from .device import Device

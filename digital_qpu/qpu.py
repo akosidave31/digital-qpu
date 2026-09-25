@@ -6,6 +6,7 @@ from .qasm import parse
 from .device import get_device
 from .executor import schedule, layer_duration, probabilities, sample_counts
 from .compiler import transpile
+from .calibration import calibrate
 
 
 class Job:
@@ -22,8 +23,9 @@ class Job:
 
 
 class QPU:
-    def __init__(self, device="dq-5"):
-        self.device = get_device(device)
+    def __init__(self, device="dq-5", day=None):
+        """day: use the device's calibration on that day (None = nominal values)."""
+        self.device = calibrate(get_device(device), day)
 
     def run(self, qasm, shots=1024, seed=None, compile=True):
         """compile=True (default): devices with native gates get the program transpiled first."""

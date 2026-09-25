@@ -38,6 +38,7 @@ Results use Qiskit's bit order: classical bit 0 is the rightmost character.
 | `executor.py` | schedules gates into time layers; each gate has its own error (depolarizing, as in Qiskit Aer); after each layer every qubit (busy or idle) feels T1/T2 noise for that time; readout error at measurement |
 | `compiler.py` | like a real transpiler: routes qubits with SWAPs when they aren't wired together, translates to the chip's native gates (rz, sx, x, cz), merges single-qubit gates and uses as few sx pulses as possible |
 | `crosstalk.py` | Ramsey experiment that measures always-on ZZ crosstalk between two qubits, like a lab |
+| `calibration.py` | day-to-day calibration drift: parameters wander (today resembles yesterday), occasional bad days when a defect drops a qubit's T1 |
 | `rb.py` | randomized benchmarking: measures the device's error per gate, like a real lab |
 | `qpu.py` | jobs: submit a program, get a job id, status and result |
 
@@ -65,6 +66,15 @@ Measure the ZZ yourself:
 
     digital-qpu zz --pair 0 1
 
+Calibration drift: like a real chip, `dq-5` is recalibrated every day. T1, T_phi, gate and readout
+errors wander around the values above (~15-25%), and about 5% of qubit-days are "bad days" where a
+material defect drops T1 to 20-50% of normal. ZZ comes from the chip design and barely moves.
+
+    digital-qpu calibration --day 12          # that day's data sheet
+    digital-qpu history --qubit 0 --days 30   # how q0 drifted over a month
+    digital-qpu run examples/bell.qasm --day 12
+    digital-qpu rb --qubit 0 --day 12         # benchmarking notices bad days
+
 See what the chip will actually run:
 
     digital-qpu compile examples/ghz5.qasm
@@ -81,6 +91,8 @@ Measure it yourself, like a lab would:
   checked against both the uncompiled program and Qiskit.
 - Crosstalk follows the exact formulas; coherent errors grow ~4x when a circuit doubles (random
   errors grow ~2x); the Ramsey experiment measures back the built-in ZZ rates (within 5%).
+- Drift statistics are realistic (centred, ~15% spread, day-to-day correlation, ~5% bad days), and
+  randomized benchmarking detects a bad day and measures that day's actual error rate.
 - Randomized benchmarking measures back the error per gate the device is built with (within 20%).
 - Against Qiskit: the same OpenQASM text through Qiskit's own parser and simulator gives the same
   probabilities (1e-9), and the noisy execution - decoherence, gate errors and crosstalk - matches a layer-by-layer Qiskit Aer
@@ -97,7 +109,7 @@ Mid-circuit measurement, `if`, `reset`, custom `gate` definitions. Routing is si
 2. Gate errors, realistic timing, randomized benchmarking (v0.2.0)
 3. Native gates, compilation and automatic qubit routing (v0.3.0)
 4. Crosstalk: always-on ZZ and drive spill-over, Ramsey measurement (v0.4.0)
-5. Calibration drift
+5. Calibration drift, daily data sheets, bad days (v0.5.0)
 6. Web API: submit jobs over HTTP, like a quantum cloud service
 7. App on top of the API
 
