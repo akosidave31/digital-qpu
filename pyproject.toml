@@ -10,7 +10,7 @@ readme = "README.md"
 license = {text = "MIT"}
 authors = [{name = "akosidave31"}]
 requires-python = ">=3.9"
-dependencies = ["numpy", "digital-qubit @ git+https://github.com/akosidave31/digital-qubit"]
+dependencies = ["numpy", "digital-qubit @ git+https://github.com/akosidave31/digital-qubit@v0.6.0"]
 
 [project.optional-dependencies]
 test = ["pytest"]
