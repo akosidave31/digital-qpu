@@ -30,7 +30,8 @@ class QPU:
     def run(self, qasm, shots=1024, seed=None, compile=True, mitigate=None):
         """compile=True (default): devices with native gates get the program transpiled first.
         mitigate="readout": also return readout-mitigated probabilities.
-        mitigate="learned": readout mitigation + learned blur correction (trains once per device/day)."""
+        mitigate="learned": readout mitigation + learned correction with the MLP (best on average).
+        mitigate="learned-linear": same with the linear model (makes results worse less often)."""
         job = Job(uuid.uuid4().hex[:12])
         t0 = time.time()
         try:
@@ -58,15 +59,16 @@ class QPU:
                 from .mitigation import readout_mitigate, distribution
                 job._result["mitigated"] = readout_mitigate(distribution(counts), self.device,
                                                             job._result["clbit_qubits"], job._result["n_clbits"])
-            elif mitigate == "learned":
+            elif mitigate in ("learned", "learned-linear"):
                 from .mitigation import readout_mitigate, distribution
                 from .learned import get_mitigator
                 ro = readout_mitigate(distribution(counts), self.device,
                                       job._result["clbit_qubits"], job._result["n_clbits"])
-                job._result["mitigated"] = get_mitigator(self.device).mitigate(
+                kind = "linear" if mitigate == "learned-linear" else "mlp"
+                job._result["mitigated"] = get_mitigator(self.device, kind).mitigate(
                     ro, program, self.device, job._result["clbit_qubits"], job._result["n_clbits"])
             elif mitigate is not None:
-                raise ValueError(f"unknown mitigation '{mitigate}' (available: 'readout', 'learned')")
+                raise ValueError(f"unknown mitigation '{mitigate}' (available: 'readout', 'learned', 'learned-linear')")
             job.status = "DONE"
         except Exception as e:
             job.status, job.error = "ERROR", str(e)

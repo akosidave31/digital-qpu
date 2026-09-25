@@ -64,3 +64,8 @@ def test_qpu_learned_mitigation():
     m = r["mitigated"]
     assert all(v >= 0 for v in m.values()) and abs(sum(m.values()) - 1) < 1e-9
     assert m.get("00000", 0) + m.get("11111", 0) > 0.9
+
+
+def test_linear_option_still_available():
+    r = QPU("dq-5").run(open("examples/bell.qasm").read(), shots=1000, seed=5, mitigate="learned-linear").result()
+    assert abs(sum(r["mitigated"].values()) - 1) < 1e-9

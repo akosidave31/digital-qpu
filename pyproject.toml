@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "digital-qpu"
-version = "0.7.0"
+version = "0.7.1"
 description = "A virtual quantum computer: OpenQASM programs on noisy simulated hardware, built on digital_qubit."
 readme = "README.md"
 license = {text = "MIT"}

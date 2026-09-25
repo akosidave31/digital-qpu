@@ -33,6 +33,7 @@ Results use Qiskit's bit order: classical bit 0 is the rightmost character.
 
     digital-qpu run examples/ghz5.qasm --mitigate readout    # counts + readout-mitigated result
     digital-qpu benchmark                                    # 10 circuits: raw vs mitigated error
+    digital-qpu benchmark --runs 5                           # 5 calibration days, error bars, harm rate
 
 Readout mitigation removes readout error only; gate errors, decoherence and crosstalk remain.
 It is the baseline that any learned mitigation must beat.
@@ -40,9 +41,15 @@ It is the baseline that any learned mitigation must beat.
 Learned mitigation (`--mitigate learned`): after readout mitigation the remaining noise mostly blurs
 results toward uniform. A model predicts how much signal survives from the circuit's error budget
 (gate errors, decoherence and ZZ exposure from the day's calibration) and undoes the blur. Two
-models: linear (default, interpretable) and an MLP from digital_qubit. Trained on random circuits
+models: an MLP from digital_qubit (default, `--mitigate learned`) and a linear model
+(`--mitigate learned-linear`). Trained on random circuits
 from a different seed family than the benchmark; `digital-qpu benchmark` compares everything
 against the shot-noise floor.
+
+Measured over 5 calibration days (`digital-qpu benchmark --runs 5`), average distance to the exact
+answer: readout 0.050, linear 0.035, MLP 0.032 (floor 0.009). The MLP is better on average, but
+makes a result worse than readout alone more often (12% vs 6% of circuit-runs; worst +0.032 vs
++0.009). Use `learned-linear` when avoiding occasional bad corrections matters more.
 
 ## How it works
 

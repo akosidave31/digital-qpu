@@ -4,7 +4,8 @@ After readout mitigation, the remaining noise mostly blurs a result toward the u
 where f (the surviving signal) depends on the circuit. A model predicts f from the circuit's error
 budget (2-qubit and 1-qubit gate errors, decoherence exposure, ZZ exposure, measured qubits), taken
 from the compiled program and the day's calibration; the blur is then undone.
-Two models: "linear" (-log f is linear in the budget; interpretable) and "mlp" (digital_qubit's MLP).
+Two models: "mlp" (digital_qubit's MLP; default since v0.7.1: best on average) and "linear" (-log f
+linear in the budget; interpretable, lower risk of making a result worse). See EXPERIMENTS.md.
 Training circuits use a different random seed family than the benchmark suite."""
 from itertools import product
 import numpy as np
@@ -134,7 +135,7 @@ class LearnedMitigator:
 _CACHE = {}
 
 
-def get_mitigator(device, kind="linear", n_circuits=120, seed=1000):
+def get_mitigator(device, kind="mlp", n_circuits=120, seed=1000):
     """Train once per (device calibration, kind) and reuse."""
     key = (device.name, kind, n_circuits, seed)
     if key not in _CACHE:

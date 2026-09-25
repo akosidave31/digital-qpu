@@ -6,7 +6,7 @@
                   python -m digital_qpu calibration [--device dq-5] --day N (that day's data sheet)
                   python -m digital_qpu history [--device dq-5] --qubit Q --days N
                   python -m digital_qpu benchmark [--device dq-5] [--day N] [--shots 4000]
-                  run / compile / rb / zz also take --day N; run also takes --mitigate readout|learned"""
+                  run / compile / rb / zz also take --day N; run also takes --mitigate readout|learned|learned-linear"""
 import argparse
 import numpy as np
 import json
@@ -33,7 +33,7 @@ def main(argv=None):
     r.add_argument("--json", action="store_true")
     r.add_argument("--no-compile", action="store_true", help="run the program's gates directly")
     r.add_argument("--day", type=int, default=None)
-    r.add_argument("--mitigate", choices=["readout", "learned"], default=None)
+    r.add_argument("--mitigate", choices=["readout", "learned", "learned-linear"], default=None)
     cp = sub.add_parser("compile", help="show the native program the device will run")
     cp.add_argument("file")
     cp.add_argument("--device", default="dq-5")
@@ -54,6 +54,7 @@ def main(argv=None):
     be.add_argument("--device", default="dq-5")
     be.add_argument("--day", type=int, default=None)
     be.add_argument("--shots", type=int, default=4000)
+    be.add_argument("--runs", type=int, default=1, help="repeat on this many calibration days (with error bars)")
     hi = sub.add_parser("history", help="how one qubit's calibration drifted over days")
     hi.add_argument("--device", default="dq-5")
     hi.add_argument("--qubit", type=int, default=0)
@@ -71,6 +72,28 @@ def main(argv=None):
                   f"{'   <- bad day (TLS defect)' if q in bad else ''}")
         if isinstance(dev.gate_error_2q, dict):
             print("  2-qubit gate errors: " + ", ".join(f"q{a}-q{b} {v * 100:.2f}%" for (a, b), v in sorted(dev.gate_error_2q.items())))
+        return 0
+    if a.cmd == "benchmark" and a.runs > 1:
+        from .mitigation import evaluate_many, summarize
+        days = list(range(a.runs))
+        print(f"{a.runs} runs on calibration days {days}; models retrained each day (~1 min per run on a phone)")
+        runs = evaluate_many(a.device, days=days, shots=a.shots)
+        cols = [("readout", "readout_tvd"), ("linear", "linear_tvd"), ("MLP", "mlp_tvd"), ("floor", "floor")]
+        print(f"  {'day':<6}" + "".join(f"{c:>9}" for c, _ in cols))
+        for d, rows in zip(days, runs):
+            print(f"  {d:<6}" + "".join(f"{np.mean([r[k] for r in rows]):>9.3f}" for _, k in cols))
+        S = summarize(runs)
+        print("  " + "-" * 42)
+        print(f"  {'mean':<6}" + "".join(f"{S['mean'][k]:>9.3f}" for _, k in cols))
+        print(f"  {'+/-':<6}" + "".join(f"{S['se'][k]:>9.3f}" for _, k in cols))
+        P = S["paired"]
+        print(f"MLP vs linear (same runs, same circuits): linear - MLP = {P['mean_diff']:+.4f} +/- {P['se']:.4f}")
+        print("  VERDICT: " + ("MLP is better by more than 2 error bars"
+                               if P["b_better_by_2se"] else "no reliable difference -> keep linear as default"))
+        for name, k in (("linear", "linear_tvd"), ("MLP", "mlp_tvd")):
+            H = S["harm"][k]
+            print(f"  harm, {name}: worse than readout alone in {H['rate'] * 100:.0f}% of circuit-runs "
+                  f"(by {H['mean_excess']:.3f} on average when worse; worst {H['worst']:+.3f})")
         return 0
     if a.cmd == "benchmark":
         from .mitigation import evaluate

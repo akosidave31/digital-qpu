@@ -26,3 +26,28 @@ Now a permanent test.
   poorly determined and a wrong B biases the decay rate.
 - **Fix:** B is fixed at its known value (1/2 corrected for readout error); the free fit is still
   reported. Test tolerance tightened from 20% (which had hidden the problem) to 5%.
+
+## v0.7.1 - is the MLP really better than the linear model?
+
+v0.7.0 (one run): linear 0.035, MLP 0.030 average distance to truth; readout baseline 0.046.
+One run cannot separate a real difference from run-to-run variation.
+- Pre-registered rule: MLP becomes the default only if it beats linear by more than 2 standard
+  errors over >= 5 runs (different calibration days, models retrained each day).
+- Also measured: harm rate (how often a learned model is worse than readout mitigation alone).
+  A strict "never worse" guarantee is impossible without knowing the true answer, so harm is
+  measured instead of promised.
+Result (5 calibration days, models retrained each day, 10 circuits each):
+
+| | readout | linear | MLP | floor |
+|---|---|---|---|---|
+| mean distance to truth | 0.050 | 0.035 | 0.032 | 0.009 |
+| +/- (standard error) | 0.003 | 0.002 | 0.002 | 0.000 |
+
+- Paired linear - MLP = +0.0035 +/- 0.0003: the MLP is better on every day (> 10 standard errors).
+- Harm (worse than readout alone by > 0.002): linear 6% of circuit-runs (mean +0.008, worst
+  +0.009); MLP 12% (mean +0.021, worst +0.032). The MLP is better on average but riskier.
+- Decision (pre-registered rule): MLP becomes the default. The rule did not include harm; it is
+  not changed after seeing the data. Harm is documented, and the linear model stays available
+  (`learned-linear`).
+- Next: reduce the MLP's harm (v0.8.0). Suspects: the "blur toward uniform" assumption (T1 pulls
+  toward 0, not uniform) and over-sharpening results whose true answer is spread out.

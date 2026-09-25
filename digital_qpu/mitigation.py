@@ -112,3 +112,31 @@ def evaluate(device="dq-5", day=None, shots=4000, seed=0, learned=True, n_train=
                 row[f"{k}_tvd"] = tvd(m.mitigate(mit, native, qpu.device, r["clbit_qubits"], r["n_clbits"]), ideal)
         rows.append(row)
     return rows
+
+
+def evaluate_many(device="dq-5", days=(0, 1, 2, 3, 4), shots=4000, n_train=120):
+    """Repeat the benchmark on several calibration days; models are retrained on each day's chip
+    and each run uses different shot randomness."""
+    return [evaluate(device, day=d, shots=shots, seed=100 * i, n_train=n_train) for i, d in enumerate(days)]
+
+
+def summarize(runs, a="linear_tvd", b="mlp_tvd", harm_tol=0.002):
+    """Means with standard errors over runs, a paired comparison of a vs b, and harm rates
+    (how often each learned model is worse than readout mitigation alone, beyond harm_tol)."""
+    keys = ["raw_tvd", "readout_tvd", "linear_tvd", "mlp_tvd", "floor"]
+    per_run = {k: np.array([np.mean([r[k] for r in rows]) for rows in runs]) for k in keys}
+    n = len(runs)
+    se = lambda x: float(x.std(ddof=1) / np.sqrt(len(x))) if len(x) > 1 else float("nan")
+    out = {"n_runs": n, "mean": {k: float(v.mean()) for k, v in per_run.items()},
+           "se": {k: se(v) for k, v in per_run.items()}}
+    d = per_run[a] - per_run[b]
+    out["paired"] = {"a": a, "b": b, "mean_diff": float(d.mean()), "se": se(d),
+                     "b_better_by_2se": bool(n > 1 and d.mean() > 2 * se(d))}
+    out["harm"] = {}
+    for k in ("linear_tvd", "mlp_tvd"):
+        excess = np.array([r[k] - r["readout_tvd"] for rows in runs for r in rows])
+        worse = excess > harm_tol
+        out["harm"][k] = {"rate": float(worse.mean()),
+                          "mean_excess": float(excess[worse].mean()) if worse.any() else 0.0,
+                          "worst": float(excess.max())}
+    return out
