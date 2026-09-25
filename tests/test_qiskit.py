@@ -91,3 +91,17 @@ def test_gate_errors_match_qiskit_layer_by_layer():
                 ch = thermal_relaxation_error(dev.T1[x], Damping.T2(dev.T1[x], dev.T_phi[x]), d).to_quantumchannel()
                 ref = ref.evolve(ch, qargs=[n - 1 - x])
         assert np.max(np.abs(final_state(program, dev).rho - ref.data)) < 1e-10
+
+
+def test_compiled_programs_match_qiskit_on_original():
+    from digital_qpu import transpile
+    rng = np.random.default_rng(4)
+    line = Device("line5", 5, coupling=[(0, 1), (1, 2), (2, 3), (3, 4)],
+                  native_gates=("rz", "sx", "x", "cz"), virtual_rz=True)
+    for _ in range(20):
+        text = rand_qasm(rng, 5, 30)
+        native, _ = transpile(parse(text), line)
+        ours = probabilities(native, line)
+        ref = Statevector(QuantumCircuit.from_qasm_str(text.replace("measure q -> c;", ""))).probabilities_dict()
+        for k in set(ours) | set(ref):
+            assert abs(ours.get(k, 0.0) - ref.get(k, 0.0)) < 1e-9

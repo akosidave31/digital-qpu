@@ -1,12 +1,12 @@
 """OpenQASM 2.0 subset parser.
 Supported: qreg/creg (one of each), include, barrier, measure (at the end of each qubit's use),
-gates: id x y z h s sdg t tdg rx ry rz p u1 cx cz swap. Parameters may use pi and + - * / ( ).
+gates: id x y z h s sdg t tdg sx rx ry rz p u1 cx cz swap. Parameters may use pi and + - * / ( ).
 Not supported yet (clear error): custom gate definitions, if, reset, mid-circuit measurement."""
 import math
 import re
 from dataclasses import dataclass, field
 
-ONE_Q = {"id": 0, "x": 0, "y": 0, "z": 0, "h": 0, "s": 0, "sdg": 0, "t": 0, "tdg": 0,
+ONE_Q = {"id": 0, "sx": 0, "x": 0, "y": 0, "z": 0, "h": 0, "s": 0, "sdg": 0, "t": 0, "tdg": 0,
          "rx": 1, "ry": 1, "rz": 1, "p": 1, "u1": 1}
 TWO_Q = {"cx": 0, "cz": 0, "swap": 0}
 UNSUPPORTED = ("gate", "opaque", "if", "reset")

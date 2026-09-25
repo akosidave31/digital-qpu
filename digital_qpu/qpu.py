@@ -5,6 +5,7 @@ import numpy as np
 from .qasm import parse
 from .device import get_device
 from .executor import schedule, layer_duration, probabilities, sample_counts
+from .compiler import transpile
 
 
 class Job:
@@ -24,12 +25,19 @@ class QPU:
     def __init__(self, device="dq-5"):
         self.device = get_device(device)
 
-    def run(self, qasm, shots=1024, seed=None):
+    def run(self, qasm, shots=1024, seed=None, compile=True):
+        """compile=True (default): devices with native gates get the program transpiled first."""
         job = Job(uuid.uuid4().hex[:12])
         t0 = time.time()
         try:
             job.status = "RUNNING"
             program = parse(qasm)
+            info = None
+            if compile and self.device.native_gates is not None:
+                program, info = transpile(program, self.device)
+                bad = {o.name for o in program.ops} - set(self.device.native_gates)
+                if bad:
+                    raise RuntimeError(f"compiler produced non-native gates: {bad}")
             layers = schedule(program, self.device)
             probs = probabilities(program, self.device)
             counts = sample_counts(probs, shots, np.random.default_rng(seed))
@@ -38,6 +46,7 @@ class QPU:
                 "counts": dict(sorted(counts.items(), key=lambda kv: -kv[1])),
                 "n_qubits": program.n_qubits, "depth": len(layers),
                 "circuit_time": float(sum(layer_duration(L, self.device) for L in layers)),
+                "compiled": info,
                 "elapsed_s": round(time.time() - t0, 4)}
             job.status = "DONE"
         except Exception as e:

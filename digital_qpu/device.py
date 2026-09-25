@@ -15,6 +15,8 @@ class Device:
     coupling: list = None           # allowed 2-qubit pairs; None = all-to-all
     gate_error_1q: list = None      # per qubit depolarizing parameter (Qiskit Aer convention)
     gate_error_2q: object = None    # dict {(a, b): p} per pair, or one float for all pairs
+    native_gates: tuple = None      # e.g. ("rz", "sx", "x", "cz"); None = runs any gate directly
+    virtual_rz: bool = False        # rz is a software frame change: zero time, zero error
     description: str = ""
 
     @property
@@ -44,6 +46,7 @@ class Device:
         return {"name": self.name, "n_qubits": self.n_qubits, "T1": self.T1, "T_phi": self.T_phi,
                 "gate_time_1q": self.gate_time_1q, "gate_time_2q": self.gate_time_2q,
                 "readout_error": self.readout_error, "coupling": self.coupling,
+                "native_gates": self.native_gates, "virtual_rz": self.virtual_rz,
                 "gate_error_1q": self.gate_error_1q,
                 "gate_error_2q": ({f"{a}-{b}": v for (a, b), v in self.gate_error_2q.items()}
                                   if isinstance(self.gate_error_2q, dict) else self.gate_error_2q),
@@ -60,7 +63,8 @@ DEVICES = {
                    coupling=[(0, 1), (1, 2), (2, 3), (3, 4)],
                    gate_error_1q=[6e-4, 8e-4, 5e-4, 9e-4, 7e-4],
                    gate_error_2q={(0, 1): 0.010, (1, 2): 0.012, (2, 3): 0.009, (3, 4): 0.014},
-                   description="noisy 5-qubit line: q0-q1-q2-q3-q4 (decoherence, gate and readout errors)"),
+                   native_gates=("rz", "sx", "x", "cz"), virtual_rz=True,
+                   description="noisy 5-qubit line: q0-q1-q2-q3-q4 (native rz sx x cz; decoherence, gate and readout errors)"),
 }
 
 

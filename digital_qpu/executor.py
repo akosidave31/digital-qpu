@@ -30,8 +30,19 @@ def schedule(program, device):
     return layers
 
 
+SX = np.array([[1 + 1j, 1 - 1j], [1 - 1j, 1 + 1j]]) / 2
+
+
+def op_duration(op, device):
+    if len(op.qubits) == 2:
+        return device.gate_time_2q
+    if device.virtual_rz and op.name == "rz":
+        return 0.0
+    return device.gate_time_1q
+
+
 def layer_duration(layer, device):
-    return max((device.gate_time_2q if len(op.qubits) == 2 else device.gate_time_1q) for op in layer)
+    return max(op_duration(op, device) for op in layer)
 
 
 def _apply(reg, op):
@@ -39,6 +50,8 @@ def _apply(reg, op):
         return reg
     if len(op.qubits) == 2:
         return getattr(reg, op.name)(*op.qubits)
+    if op.name == "sx":
+        return reg.apply1(SX, op.qubits[0])
     if op.name in ("sdg", "tdg"):
         return reg.apply1(gate_matrix(op.name[0]).conj().T, op.qubits[0])
     name = _ALIASES.get(op.name, op.name)
@@ -65,7 +78,7 @@ def depolarize_2q(reg, a, b, p):
 
 
 def _gate_error(reg, op, device):
-    if op.name == "id":
+    if op.name == "id" or (device.virtual_rz and op.name == "rz"):
         return reg
     if len(op.qubits) == 1:
         p = device.error_1q(op.qubits[0])
