@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "digital-qpu"
+version = "0.1.0"
+description = "A virtual quantum computer: OpenQASM programs on noisy simulated hardware, built on digital_qubit."
+readme = "README.md"
+license = {text = "MIT"}
+authors = [{name = "akosidave31"}]
+requires-python = ">=3.9"
+dependencies = ["numpy", "digital-qubit @ git+https://github.com/akosidave31/digital-qubit"]
+
+[project.optional-dependencies]
+test = ["pytest"]
+qiskit = ["qiskit", "qiskit-aer"]
+
+[project.scripts]
+digital-qpu = "digital_qpu.__main__:main"
+
+[project.urls]
+Homepage = "https://github.com/akosidave31/digital-qpu"
+
+[tool.setuptools]
+packages = ["digital_qpu"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
