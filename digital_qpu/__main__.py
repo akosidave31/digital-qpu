@@ -5,8 +5,10 @@
                   python -m digital_qpu zz [--device dq-5] [--pair 0 1]     (measure ZZ crosstalk)
                   python -m digital_qpu calibration [--device dq-5] --day N (that day's data sheet)
                   python -m digital_qpu history [--device dq-5] --qubit Q --days N
-                  run / compile / rb / zz also take --day N"""
+                  python -m digital_qpu benchmark [--device dq-5] [--day N] [--shots 4000]
+                  run / compile / rb / zz also take --day N; run also takes --mitigate readout"""
 import argparse
+import numpy as np
 import json
 import sys
 from .device import DEVICES
@@ -31,6 +33,7 @@ def main(argv=None):
     r.add_argument("--json", action="store_true")
     r.add_argument("--no-compile", action="store_true", help="run the program's gates directly")
     r.add_argument("--day", type=int, default=None)
+    r.add_argument("--mitigate", choices=["readout"], default=None)
     cp = sub.add_parser("compile", help="show the native program the device will run")
     cp.add_argument("file")
     cp.add_argument("--device", default="dq-5")
@@ -47,6 +50,10 @@ def main(argv=None):
     cal = sub.add_parser("calibration", help="the device's calibration data sheet for a day")
     cal.add_argument("--device", default="dq-5")
     cal.add_argument("--day", type=int, required=True)
+    be = sub.add_parser("benchmark", help="distance to the exact answers: raw vs readout-mitigated")
+    be.add_argument("--device", default="dq-5")
+    be.add_argument("--day", type=int, default=None)
+    be.add_argument("--shots", type=int, default=4000)
     hi = sub.add_parser("history", help="how one qubit's calibration drifted over days")
     hi.add_argument("--device", default="dq-5")
     hi.add_argument("--qubit", type=int, default=0)
@@ -64,6 +71,16 @@ def main(argv=None):
                   f"{'   <- bad day (TLS defect)' if q in bad else ''}")
         if isinstance(dev.gate_error_2q, dict):
             print("  2-qubit gate errors: " + ", ".join(f"q{a}-q{b} {v * 100:.2f}%" for (a, b), v in sorted(dev.gate_error_2q.items())))
+        return 0
+    if a.cmd == "benchmark":
+        from .mitigation import evaluate
+        rows = evaluate(a.device, a.day, a.shots)
+        print(f"distance to the exact answer (TVD: 0 = perfect), {a.shots} shots per circuit")
+        print(f"  {'circuit':<10}{'raw':>8}{'readout-mitigated':>20}")
+        for r in rows:
+            print(f"  {r['circuit']:<10}{r['raw_tvd']:>8.3f}{r['readout_tvd']:>20.3f}")
+        raw = np.mean([r["raw_tvd"] for r in rows]); mit = np.mean([r["readout_tvd"] for r in rows])
+        print(f"  {'average':<10}{raw:>8.3f}{mit:>20.3f}   ({(1 - mit / raw) * 100:.0f}% closer)")
         return 0
     if a.cmd == "history":
         nom = get_device(a.device)
@@ -103,7 +120,8 @@ def main(argv=None):
             print(f"{d.name:<8} {d.n_qubits:>3} qubits  {d.description}")
         return 0
     with open(a.file, encoding="utf-8") as f:
-        job = QPU(a.device, day=a.day).run(f.read(), shots=a.shots, seed=a.seed, compile=not a.no_compile)
+        job = QPU(a.device, day=a.day).run(f.read(), shots=a.shots, seed=a.seed, compile=not a.no_compile,
+                                            mitigate=a.mitigate)
     if job.status == "ERROR":
         print(f"ERROR: {job.error}", file=sys.stderr)
         return 1
@@ -119,6 +137,10 @@ def main(argv=None):
               f"{c['swaps']} swaps inserted")
     for k, c in res["counts"].items():
         print(f"  {k}  {c:>6}  {'#' * round(40 * c / res['shots'])}")
+    if "mitigated" in res:
+        print("readout-mitigated probabilities:")
+        for k, v in sorted(res["mitigated"].items(), key=lambda kv: -kv[1])[:8]:
+            print(f"  {k}  {v:6.3f}  {'#' * round(40 * v)}")
     return 0
 
 

@@ -4,13 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "digital-qpu"
-version = "0.5.1"
+version = "0.6.0"
 description = "A virtual quantum computer: OpenQASM programs on noisy simulated hardware, built on digital_qubit."
 readme = "README.md"
 license = {text = "MIT"}
 authors = [{name = "akosidave31"}]
 requires-python = ">=3.9"
-dependencies = ["numpy", "digital-qubit @ git+https://github.com/akosidave31/digital-qubit@v0.6.0"]
+dependencies = ["numpy", "digital-qubit @ git+https://github.com/akosidave31/digital-qubit"]
 
 [project.optional-dependencies]
 test = ["pytest"]

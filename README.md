@@ -29,6 +29,14 @@ Python:
 
 Results use Qiskit's bit order: classical bit 0 is the rightmost character.
 
+## Error mitigation
+
+    digital-qpu run examples/ghz5.qasm --mitigate readout    # counts + readout-mitigated result
+    digital-qpu benchmark                                    # 10 circuits: raw vs mitigated error
+
+Readout mitigation removes readout error only; gate errors, decoherence and crosstalk remain.
+It is the baseline that any learned mitigation must beat.
+
 ## How it works
 
 | Layer | What it does |
@@ -39,6 +47,7 @@ Results use Qiskit's bit order: classical bit 0 is the rightmost character.
 | `compiler.py` | like a real transpiler: routes qubits with SWAPs when they aren't wired together, translates to the chip's native gates (rz, sx, x, cz), merges single-qubit gates and uses as few sx pulses as possible |
 | `crosstalk.py` | Ramsey experiment that measures always-on ZZ crosstalk between two qubits, like a lab |
 | `calibration.py` | day-to-day calibration drift: parameters wander (today resembles yesterday), occasional bad days when a defect drops a qubit's T1 |
+| `mitigation.py` | benchmark suite with exactly known answers; readout-error mitigation (undo the day's readout errors); distance-to-truth metrics |
 | `rb.py` | randomized benchmarking: measures the device's error per gate, like a real lab |
 | `qpu.py` | jobs: submit a program, get a job id, status and result |
 
@@ -93,6 +102,7 @@ Measure it yourself, like a lab would:
   errors grow ~2x); the Ramsey experiment measures back the built-in ZZ rates (within 5%).
 - Drift statistics are realistic (centred, ~15% spread, day-to-day correlation, ~5% bad days), and
   randomized benchmarking detects a bad day and measures that day's actual error rate.
+- Readout mitigation is exact without shot noise (including routed circuits) and helps on real runs.
 - Randomized benchmarking measures back the error per gate the device is built with (within 5%),
   and that built-in value agrees with an exact simulator calculation (see EXPERIMENTS.md).
 - Against Qiskit: the same OpenQASM text through Qiskit's own parser and simulator gives the same
@@ -111,8 +121,9 @@ Mid-circuit measurement, `if`, `reset`, custom `gate` definitions. Routing is si
 3. Native gates, compilation and automatic qubit routing (v0.3.0)
 4. Crosstalk: always-on ZZ and drive spill-over, Ramsey measurement (v0.4.0)
 5. Calibration drift, daily data sheets, bad days (v0.5.0); investigation fixes (v0.5.1)
-6. Web API: submit jobs over HTTP, like a quantum cloud service
-7. App on top of the API
+6. Error mitigation: benchmark suite + readout mitigation baseline (v0.6.0); learned mitigation next
+7. Web API: submit jobs over HTTP, like a quantum cloud service
+8. App on top of the API
 
 See EXPERIMENTS.md for investigations and the decisions they led to.
 
