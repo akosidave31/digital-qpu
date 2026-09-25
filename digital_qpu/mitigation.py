@@ -75,10 +75,28 @@ def benchmark_suite(seed=0):
     return suite
 
 
-def evaluate(device="dq-5", day=None, shots=4000, seed=0):
-    """Distance to the exact answer, raw vs readout-mitigated, for every benchmark circuit."""
+def shot_noise_floor(ideal, shots, rng, repeats=5):
+    """Distance a PERFECT machine would still show, only because of finite shots."""
+    keys = list(ideal)
+    p = np.array([ideal[k] for k in keys])
+    vals = []
+    for _ in range(repeats):
+        c = rng.multinomial(shots, p / p.sum())
+        vals.append(tvd({k: v / shots for k, v in zip(keys, c)}, ideal))
+    return float(np.mean(vals))
+
+
+def evaluate(device="dq-5", day=None, shots=4000, seed=0, learned=True, n_train=120, mitigators=None):
+    """Distance to the exact answer for every benchmark circuit: raw, readout-mitigated and
+    (optionally) learned mitigation (linear and MLP), plus the shot-noise floor."""
     from .qpu import QPU
+    from .compiler import transpile
     qpu = QPU(device, day=day)
+    if learned and mitigators is None:
+        from .learned import training_data, LearnedMitigator
+        X, y = training_data(qpu.device, n_train)
+        mitigators = {k: LearnedMitigator(k).fit(X, y) for k in ("linear", "mlp")}
+    rng = np.random.default_rng(seed + 12345)
     rows = []
     for i, (name, qasm) in enumerate(benchmark_suite()):
         ideal = probabilities(parse(qasm), DEVICES["ideal"])
@@ -86,5 +104,11 @@ def evaluate(device="dq-5", day=None, shots=4000, seed=0):
         r = qpu.run(qasm, shots=shots, seed=seed + i).result()
         raw = distribution(r["counts"])
         mit = readout_mitigate(raw, qpu.device, r["clbit_qubits"], r["n_clbits"])
-        rows.append({"circuit": name, "raw_tvd": tvd(raw, ideal), "readout_tvd": tvd(mit, ideal)})
+        row = {"circuit": name, "raw_tvd": tvd(raw, ideal), "readout_tvd": tvd(mit, ideal),
+               "floor": shot_noise_floor(ideal, shots, rng)}
+        if learned:
+            native, _ = transpile(parse(qasm), qpu.device)
+            for k, m in mitigators.items():
+                row[f"{k}_tvd"] = tvd(m.mitigate(mit, native, qpu.device, r["clbit_qubits"], r["n_clbits"]), ideal)
+        rows.append(row)
     return rows

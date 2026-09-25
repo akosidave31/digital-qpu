@@ -37,6 +37,13 @@ Results use Qiskit's bit order: classical bit 0 is the rightmost character.
 Readout mitigation removes readout error only; gate errors, decoherence and crosstalk remain.
 It is the baseline that any learned mitigation must beat.
 
+Learned mitigation (`--mitigate learned`): after readout mitigation the remaining noise mostly blurs
+results toward uniform. A model predicts how much signal survives from the circuit's error budget
+(gate errors, decoherence and ZZ exposure from the day's calibration) and undoes the blur. Two
+models: linear (default, interpretable) and an MLP from digital_qubit. Trained on random circuits
+from a different seed family than the benchmark; `digital-qpu benchmark` compares everything
+against the shot-noise floor.
+
 ## How it works
 
 | Layer | What it does |
@@ -47,6 +54,7 @@ It is the baseline that any learned mitigation must beat.
 | `compiler.py` | like a real transpiler: routes qubits with SWAPs when they aren't wired together, translates to the chip's native gates (rz, sx, x, cz), merges single-qubit gates and uses as few sx pulses as possible |
 | `crosstalk.py` | Ramsey experiment that measures always-on ZZ crosstalk between two qubits, like a lab |
 | `calibration.py` | day-to-day calibration drift: parameters wander (today resembles yesterday), occasional bad days when a defect drops a qubit's T1 |
+| `learned.py` | learned error mitigation: predicts surviving signal from the circuit's error budget (linear model or digital_qubit's MLP) |
 | `mitigation.py` | benchmark suite with exactly known answers; readout-error mitigation (undo the day's readout errors); distance-to-truth metrics |
 | `rb.py` | randomized benchmarking: measures the device's error per gate, like a real lab |
 | `qpu.py` | jobs: submit a program, get a job id, status and result |
@@ -121,7 +129,7 @@ Mid-circuit measurement, `if`, `reset`, custom `gate` definitions. Routing is si
 3. Native gates, compilation and automatic qubit routing (v0.3.0)
 4. Crosstalk: always-on ZZ and drive spill-over, Ramsey measurement (v0.4.0)
 5. Calibration drift, daily data sheets, bad days (v0.5.0); investigation fixes (v0.5.1)
-6. Error mitigation: benchmark suite + readout mitigation baseline (v0.6.0); learned mitigation next
+6. Error mitigation: benchmark suite + readout baseline (v0.6.0); learned mitigation (v0.7.0)
 7. Web API: submit jobs over HTTP, like a quantum cloud service
 8. App on top of the API
 

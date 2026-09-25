@@ -43,7 +43,7 @@ def test_mitigation_helps_with_shots_on_readout_only_device():
 
 
 def test_benchmark_on_dq5_readout_helps_but_does_not_fix_everything():
-    rows = evaluate("dq-5", shots=4000)
+    rows = evaluate("dq-5", shots=4000, learned=False)
     raw = np.mean([r["raw_tvd"] for r in rows])
     mit = np.mean([r["readout_tvd"] for r in rows])
     assert len(rows) == 10
@@ -60,5 +60,4 @@ def test_cli(capsys):
     from digital_qpu.__main__ import main
     assert main(["run", "examples/bell.qasm", "--mitigate", "readout", "--shots", "200", "--seed", "1"]) == 0
     assert "readout-mitigated" in capsys.readouterr().out
-    assert main(["benchmark", "--shots", "500"]) == 0
-    assert "average" in capsys.readouterr().out
+

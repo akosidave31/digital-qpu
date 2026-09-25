@@ -6,7 +6,7 @@
                   python -m digital_qpu calibration [--device dq-5] --day N (that day's data sheet)
                   python -m digital_qpu history [--device dq-5] --qubit Q --days N
                   python -m digital_qpu benchmark [--device dq-5] [--day N] [--shots 4000]
-                  run / compile / rb / zz also take --day N; run also takes --mitigate readout"""
+                  run / compile / rb / zz also take --day N; run also takes --mitigate readout|learned"""
 import argparse
 import numpy as np
 import json
@@ -33,7 +33,7 @@ def main(argv=None):
     r.add_argument("--json", action="store_true")
     r.add_argument("--no-compile", action="store_true", help="run the program's gates directly")
     r.add_argument("--day", type=int, default=None)
-    r.add_argument("--mitigate", choices=["readout"], default=None)
+    r.add_argument("--mitigate", choices=["readout", "learned"], default=None)
     cp = sub.add_parser("compile", help="show the native program the device will run")
     cp.add_argument("file")
     cp.add_argument("--device", default="dq-5")
@@ -74,13 +74,21 @@ def main(argv=None):
         return 0
     if a.cmd == "benchmark":
         from .mitigation import evaluate
+        print("training learned mitigation on random circuits (different seed from the benchmark)...")
         rows = evaluate(a.device, a.day, a.shots)
         print(f"distance to the exact answer (TVD: 0 = perfect), {a.shots} shots per circuit")
-        print(f"  {'circuit':<10}{'raw':>8}{'readout-mitigated':>20}")
+        cols = [("raw", "raw_tvd"), ("readout", "readout_tvd"), ("linear", "linear_tvd"), ("MLP", "mlp_tvd"),
+                ("floor", "floor")]
+        print(f"  {'circuit':<10}" + "".join(f"{c:>9}" for c, _ in cols))
         for r in rows:
-            print(f"  {r['circuit']:<10}{r['raw_tvd']:>8.3f}{r['readout_tvd']:>20.3f}")
-        raw = np.mean([r["raw_tvd"] for r in rows]); mit = np.mean([r["readout_tvd"] for r in rows])
-        print(f"  {'average':<10}{raw:>8.3f}{mit:>20.3f}   ({(1 - mit / raw) * 100:.0f}% closer)")
+            print(f"  {r['circuit']:<10}" + "".join(f"{r[k]:>9.3f}" for _, k in cols))
+        avg = {k: float(np.mean([r[k] for r in rows])) for _, k in cols}
+        print(f"  {'average':<10}" + "".join(f"{avg[k]:>9.3f}" for _, k in cols))
+        gap = avg["readout_tvd"] - avg["floor"]
+        for name, k in (("linear", "linear_tvd"), ("MLP", "mlp_tvd")):
+            closed = (avg["readout_tvd"] - avg[k]) / gap * 100 if gap > 0 else 0.0
+            verdict = "beats" if avg[k] < avg["readout_tvd"] else "does NOT beat"
+            print(f"  {name}: {verdict} the readout baseline; closes {closed:.0f}% of the gap to the shot-noise floor")
         return 0
     if a.cmd == "history":
         nom = get_device(a.device)
