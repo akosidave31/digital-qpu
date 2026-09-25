@@ -143,3 +143,15 @@ def test_crosstalk_matches_qiskit_layer_by_layer():
                 ch = thermal_relaxation_error(dev.T1[x], Damping.T2(dev.T1[x], dev.T_phi[x]), d).to_quantumchannel()
                 ref = ref.evolve(ch, qargs=[n - 1 - x])
         assert np.max(np.abs(final_state(program, dev).rho - ref.data)) < 1e-10
+
+
+def test_algorithms_match_qiskit():
+    from digital_qpu import all_algorithms
+    for alg in all_algorithms():
+        text = alg["qasm"]
+        measured = [int(l.split("q[")[1].split("]")[0]) for l in text.splitlines() if l.startswith("measure")]
+        ours = probabilities(parse(text), DEVICES["ideal"])
+        body = "\n".join(l for l in text.splitlines() if not l.startswith("measure"))
+        ref = Statevector(QuantumCircuit.from_qasm_str(body)).probabilities_dict(qargs=measured)
+        for k in set(ours) | set(ref):
+            assert abs(ours.get(k, 0.0) - ref.get(k, 0.0)) < 1e-9, (alg["name"], k)

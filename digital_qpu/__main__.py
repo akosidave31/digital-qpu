@@ -6,6 +6,8 @@
                   python -m digital_qpu calibration [--device dq-5] --day N (that day's data sheet)
                   python -m digital_qpu history [--device dq-5] --qubit Q --days N
                   python -m digital_qpu benchmark [--device dq-5] [--day N] [--shots 4000]
+                  python -m digital_qpu algorithms [--device dq-5] [--shots 2000]   (famous quantum algorithms)
+                  python -m digital_qpu shor [--shots 2000]                         (factor 15, step by step)
                   run / compile / rb / zz also take --day N; run also takes --mitigate readout|learned|learned-linear"""
 import argparse
 import numpy as np
@@ -16,6 +18,7 @@ from .qpu import QPU
 from .rb import randomized_benchmarking
 from .crosstalk import zz_ramsey
 from .calibration import calibrate, bad_qubits, history
+from .algorithms import shor_factors as shor_factors_cli
 from .device import get_device
 from .qasm import parse
 from .compiler import transpile, to_qasm
@@ -55,6 +58,14 @@ def main(argv=None):
     be.add_argument("--day", type=int, default=None)
     be.add_argument("--shots", type=int, default=4000)
     be.add_argument("--runs", type=int, default=1, help="repeat on this many calibration days (with error bars)")
+    al = sub.add_parser("algorithms", help="run famous quantum algorithms and check their answers")
+    al.add_argument("--device", default="dq-5")
+    al.add_argument("--day", type=int, default=None)
+    al.add_argument("--shots", type=int, default=2000)
+    al.add_argument("--seed", type=int, default=1)
+    sh = sub.add_parser("shor", help="Shor's algorithm factoring 15, step by step")
+    sh.add_argument("--shots", type=int, default=2000)
+    sh.add_argument("--seed", type=int, default=1)
     hi = sub.add_parser("history", help="how one qubit's calibration drifted over days")
     hi.add_argument("--device", default="dq-5")
     hi.add_argument("--qubit", type=int, default=0)
@@ -112,6 +123,49 @@ def main(argv=None):
             closed = (avg["readout_tvd"] - avg[k]) / gap * 100 if gap > 0 else 0.0
             verdict = "beats" if avg[k] < avg["readout_tvd"] else "does NOT beat"
             print(f"  {name}: {verdict} the readout baseline; closes {closed:.0f}% of the gap to the shot-noise floor")
+        return 0
+    if a.cmd == "algorithms":
+        from .algorithms import all_algorithms
+        dev = calibrate(get_device(a.device), a.day)
+        for alg in all_algorithms():
+            ideal = QPU("ideal").run(alg["qasm"], shots=a.shots, seed=a.seed).result()["counts"]
+            ai, si = alg["answer"](ideal), alg["success"](ideal)
+            line = f"   expected {alg['expected']} | ideal {ai} ({si * 100:.0f}%) {'OK' if ai == alg['expected'] else 'WRONG'}"
+            if alg["qubits"] <= dev.n_qubits:
+                noisy = QPU(dev).run(alg["qasm"], shots=a.shots, seed=a.seed).result()["counts"]
+                an, sn = alg["answer"](noisy), alg["success"](noisy)
+                line += f" | {dev.name} {an} ({sn * 100:.0f}%) {'OK' if an == alg['expected'] else 'WRONG'}"
+            else:
+                line += f" | {dev.name}: needs {alg['qubits']} qubits (has {dev.n_qubits})"
+            print(f"{alg['name']}: {alg['task']}")
+            print(line)
+        print("(percent = share of shots that gave the correct answer)")
+        return 0
+    if a.cmd == "shor":
+        from .algorithms import shor15
+        from fractions import Fraction
+        from math import gcd
+        alg = shor15()
+        counts = QPU("ideal").run(alg["qasm"], shots=a.shots, seed=a.seed).result()["counts"]
+        print("Shor's algorithm: factor N = 15 with a = 7 (8 qubits: 4 counting + 4 work)")
+        print("1. quantum part: measure the 4 counting qubits")
+        for k, c in sorted(counts.items(), key=lambda kv: -kv[1]):
+            print(f"   {k} (y = {int(k, 2):>2})  {c:>5}  {'#' * round(30 * c / a.shots)}")
+        print("2. classical part: y / 16 -> fraction -> period r, keep r if 7^r = 1 (mod 15)")
+        for k in sorted(counts, key=counts.get, reverse=True):
+            y = int(k, 2)
+            if y == 0:
+                print("   y =  0: no information, skip")
+                continue
+            fr = Fraction(y, 16).limit_denominator(15)
+            r = fr.denominator
+            good = r % 2 == 0 and pow(7, r, 15) == 1
+            print(f"   y = {y:>2}: {y}/16 = {fr} -> r = {r}  {'7^' + str(r) + ' mod 15 = 1  -> period found' if good else '(not the period)'}")
+        r, f = shor_factors_cli(counts)
+        if f:
+            print(f"3. factors: gcd(7^{r // 2} - 1, 15) = {gcd(7 ** (r // 2) - 1, 15)}, "
+                  f"gcd(7^{r // 2} + 1, 15) = {gcd(7 ** (r // 2) + 1, 15)}")
+            print(f"   15 = {f[0]} x {f[1]}")
         return 0
     if a.cmd == "history":
         nom = get_device(a.device)

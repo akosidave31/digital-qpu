@@ -29,6 +29,24 @@ Python:
 
 Results use Qiskit's bit order: classical bit 0 is the rightmost character.
 
+## Famous quantum algorithms
+
+The same computations run on real quantum hardware, as OpenQASM programs in
+[`examples/algorithms/`](examples/algorithms):
+
+| algorithm | what it does |
+|---|---|
+| Bernstein-Vazirani | finds a hidden 3-bit string with ONE query (classical: 3) |
+| Deutsch-Jozsa | constant or balanced function? ONE query |
+| Grover (3 qubits) | finds 1 marked item among 8 in 2 steps (94.5% ideal success) |
+| Phase estimation | reads a hidden phase out as binary digits (core of Shor) |
+| Shor | factors 15 = 3 x 5 (8 qubits, ideal device) |
+
+    digital-qpu algorithms          # every algorithm on the ideal machine and on dq-5
+    digital-qpu shor                # factor 15 step by step: quantum part + classical post-processing
+
+Same computation, not the same speed: this is a classical simulation (see the top of this README).
+
 ## Error mitigation
 
     digital-qpu run examples/ghz5.qasm --mitigate readout    # counts + readout-mitigated result
@@ -136,9 +154,11 @@ Mid-circuit measurement, `if`, `reset`, custom `gate` definitions. Routing is si
 3. Native gates, compilation and automatic qubit routing (v0.3.0)
 4. Crosstalk: always-on ZZ and drive spill-over, Ramsey measurement (v0.4.0)
 5. Calibration drift, daily data sheets, bad days (v0.5.0); investigation fixes (v0.5.1)
-6. Error mitigation: benchmark suite + readout baseline (v0.6.0); learned mitigation (v0.7.0)
-7. Web API: submit jobs over HTTP, like a quantum cloud service
-8. App on top of the API
+6. Error mitigation: benchmark suite + readout baseline (v0.6.0); learned mitigation (v0.7.0/0.7.1)
+7. Famous algorithms: Bernstein-Vazirani, Deutsch-Jozsa, Grover, phase estimation, Shor-15 (v0.8.0)
+8. Reduce learned mitigation's harm (v0.9.0)
+9. Web API: submit jobs over HTTP, like a quantum cloud service
+10. App on top of the API
 
 See EXPERIMENTS.md for investigations and the decisions they led to.
 
