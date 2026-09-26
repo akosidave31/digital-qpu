@@ -93,6 +93,11 @@ def test_limits():
         probabilities(prog(6, "h q[0]; measure q -> c;"), DEVICES["dq-5"])     # device too small
     big = Device("big", 12, T1=[50.0] * 12, gate_time_1q=0.1)
     with pytest.raises(QasmError):
-        probabilities(prog(12, "h q[0]; measure q -> c;"), big)               # noisy limit
+        probabilities(prog(12, "h q[0]; measure q -> c;"), big, method="density")   # exact noisy limit
+    P12 = probabilities(prog(12, "h q[0]; measure q -> c;"), big, n_traj=50)       # trajectories: fine
+    assert abs(sum(P12.values()) - 1) < 1e-9
+    huge = Device("huge", 17, T1=[50.0] * 17, gate_time_1q=0.1)
+    with pytest.raises(QasmError):
+        probabilities(prog(17, "h q[0]; measure q -> c;"), huge)                    # trajectory limit
     P = probabilities(prog(16, "h q[0]; measure q[0] -> c[0];"), IDEAL)        # ideal: fine
     assert math.isclose(P["0" * 16], 0.5)

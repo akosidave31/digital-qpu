@@ -58,6 +58,15 @@ def run(quick=False):
         res["noisy"].append({"qubits": n, "seconds": _best(lambda: probabilities(native, dev), 1 if n >= 8 else 3),
                              "state_MB": 4 ** n * 16 / 1e6, "native_ops": len(native.ops)})
 
+    res["trajectories"] = []
+    for n, nt in (((10, 50),) if quick else ((10, 300), (12, 300))):
+        dev = line_device(n)
+        native, _ = transpile(ghz(n), dev)
+        t0 = time.perf_counter()
+        probabilities(native, dev, method="trajectories", n_traj=nt)
+        res["trajectories"].append({"qubits": n, "trajectories": nt, "seconds": time.perf_counter() - t0,
+                                    "state_MB_per_trajectory": 2 ** n * 16 / 1e6})
+
     g = parse(grover3()["qasm"])
     res["features"] = []
     for feats in ((), ("gates",), ("thermal",), ("crosstalk",), ("gates", "thermal", "crosstalk")):
@@ -106,6 +115,11 @@ def print_report(res, baseline=None):
     print("2. noisy engine (density matrix), GHZ on a noisy line")
     for i, r in enumerate(res["noisy"]):
         print(f"   {r['qubits']:>2} qubits  {r['seconds']:8.3f} s   state {r['state_MB']:8.2f} MB   {r['native_ops']} ops{vs('noisy', i)}")
+    if res.get("trajectories"):
+        print("2b. noisy engine (trajectories), GHZ on a noisy line")
+        for r in res["trajectories"]:
+            print(f"   {r['qubits']:>2} qubits  {r['seconds']:8.3f} s   {r['trajectories']} trajectories, "
+                  f"{r['state_MB_per_trajectory']:.2f} MB each")
     print("3. cost of each noise feature: Grover (3 qubits) compiled on a 5-qubit line")
     base = res["features"][0]["seconds"]
     for i, r in enumerate(res["features"]):

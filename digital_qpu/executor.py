@@ -387,22 +387,45 @@ def _final_pure_fast(layers, device, n):
     return NQubit(n, np.ascontiguousarray(psi).reshape(-1))
 
 
-def final_state(program, device):
-    """NQubit (no stochastic noise) or NDensity (decoherence and/or gate errors) after all gates."""
-    layers = schedule(program, device)
-    n = program.n_qubits
+AUTO_DENSITY_MAX = 8      # above this many noisy qubits, "auto" uses trajectories
+
+
+def engine_for(n, device, method="auto"):
+    """Which engine runs an n-qubit program: 'pure', 'density' or 'trajectories'."""
     if not device.needs_density:
+        return "pure"
+    if method == "density":
+        return "density"
+    if method == "trajectories":
+        return "trajectories"
+    if method != "auto":
+        raise ValueError("method must be 'auto', 'density' or 'trajectories'")
+    return "density" if n <= AUTO_DENSITY_MAX else "trajectories"
+
+
+def final_state(program, device, method="auto", n_traj=300, seed=0):
+    """Final state: NQubit (no stochastic noise), NDensity (exact noisy, up to 10 qubits) or a
+    TrajectoryState (statistical noisy, up to 16 qubits). method: auto | density | trajectories."""
+    n = program.n_qubits
+    engine = engine_for(n, device, method)
+    if engine == "trajectories":
+        from .trajectories import final_trajectories
+        return final_trajectories(program, device, n_traj=n_traj, seed=seed)
+    layers = schedule(program, device)
+    if engine == "pure":
         return _final_pure_fast(layers, device, n)
     if n > MAX_NOISY_QUBITS:
-        raise QasmError(f"noisy simulation is limited to {MAX_NOISY_QUBITS} qubits (program has {n})")
+        raise QasmError(f"exact noisy simulation is limited to {MAX_NOISY_QUBITS} qubits (program has {n}); "
+                        "use method='trajectories'")
     return _final_density_fast(layers, device, n)
 
 
-def probabilities(program, device):
-    """Exact probability of every classical outcome (readout error included), Qiskit bit order."""
+def probabilities(program, device, method="auto", n_traj=300, seed=0):
+    """Probability of every classical outcome (readout error included), Qiskit bit order.
+    Exact, except with the trajectory engine (then an average over n_traj trajectories)."""
     if not program.measures:
         raise QasmError("program has no measurements")
-    reg = final_state(program, device)
+    reg = final_state(program, device, method=method, n_traj=n_traj, seed=seed)
     n = program.n_qubits
     mq = sorted(program.measures)
     P = reg.probs().reshape((2,) * n)

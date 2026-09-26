@@ -4,7 +4,7 @@ import uuid
 import numpy as np
 from .qasm import parse
 from .device import get_device
-from .executor import schedule, layer_duration, probabilities, sample_counts
+from .executor import schedule, layer_duration, probabilities, sample_counts, engine_for
 from .compiler import transpile
 from .calibration import calibrate
 
@@ -27,7 +27,7 @@ class QPU:
         """day: use the device's calibration on that day (None = nominal values)."""
         self.device = calibrate(get_device(device), day)
 
-    def run(self, qasm, shots=1024, seed=None, compile=True, mitigate=None):
+    def run(self, qasm, shots=1024, seed=None, compile=True, mitigate=None, method="auto", n_traj=300):
         """compile=True (default): devices with native gates get the program transpiled first.
         mitigate="readout": also return readout-mitigated probabilities.
         mitigate="learned": readout mitigation + learned correction with the MLP (best on average).
@@ -44,7 +44,9 @@ class QPU:
                 if bad:
                     raise RuntimeError(f"compiler produced non-native gates: {bad}")
             layers = schedule(program, self.device)
-            probs = probabilities(program, self.device)
+            engine = engine_for(program.n_qubits, self.device, method)
+            probs = probabilities(program, self.device, method=method, n_traj=n_traj,
+                                  seed=0 if seed is None else seed)
             counts = sample_counts(probs, shots, np.random.default_rng(seed))
             job._result = {
                 "job_id": job.id, "device": self.device.name, "shots": shots,
@@ -52,6 +54,7 @@ class QPU:
                 "n_qubits": program.n_qubits, "depth": len(layers),
                 "circuit_time": float(sum(layer_duration(L, self.device) for L in layers)),
                 "compiled": info,
+                "engine": engine if engine != "trajectories" else f"trajectories ({n_traj})",
                 "clbit_qubits": {c: q for q, c in program.measures.items()},
                 "n_clbits": max(program.n_clbits, max(program.measures.values()) + 1),
                 "elapsed_s": round(time.time() - t0, 4)}

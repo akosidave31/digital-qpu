@@ -86,6 +86,19 @@ swap as a free relabelling of axes; cx as a flip of the half of the state where 
 Targets (set before measuring): ideal 20-qubit GHZ 1.05 s -> < 0.5 s; noise-free Grover
 0.039 s -> < 0.01 s; crosstalk-only Grover 0.086 s -> < 0.02 s; results identical to the
 reference (< 1e-12).
-Result (phone): ideal 20-qubit GHZ 0.351 s (3.3x) - met; noise-free Grover 0.009 s (4.6x) - met;
-crosstalk-only Grover 0.020 s (4.6x) - at the target (printed value rounded; within measurement noise);
-identical to the reference. Test suite 42 s -> 68 s from the new reference-engine equivalence tests.
+Result: (pending)
+
+## v0.10.0 - capacity: trajectories, a 12-qubit chip, noisy Shor
+
+Change: trajectory (Monte-Carlo wavefunction) engine for noisy circuits above 8 qubits (up to 16),
+batched so numpy calls do not grow with the number of trajectories; new 12-qubit ladder chip dq-12.
+Targets (set before measuring): trajectories agree with the exact engine within statistical error
+and get closer with more trajectories (tests); a 12-qubit noisy GHZ with 300 trajectories runs in
+< 30 s on the phone; noisy Shor on dq-12 completes. Shor's noisy success rate is an experiment,
+not a target.
+Result (phone): statistical agreement tests pass. 12-qubit GHZ with 300 trajectories: 30.06 s -
+target MISSED by 0.2% (10 qubits: 5.2 s). Noisy Shor on dq-12 completes: routed onto 8 physical qubits, so the
+exact engine ran (7 s); 1232 native ops, 194 cz of which 132 come from 44 SWAPs; useful outcomes 31% (ideal
+50%); still factors 15 = 3 x 5. Routing overhead dominates -> smarter routing is the next priority.
+Fixes found during the run: slow-test skipping was missing in this repo; the Shor test wrongly assumed the
+trajectory engine; the 'period found' label also accepts multiples of the period (display only).

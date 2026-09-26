@@ -44,6 +44,7 @@ The same computations run on real quantum hardware, as OpenQASM programs in
 
     digital-qpu algorithms          # every algorithm on the ideal machine and on dq-5
     digital-qpu shor                # factor 15 step by step: quantum part + classical post-processing
+    digital-qpu shor --device dq-12 # the same on the noisy 12-qubit chip (trajectories)
 
 Same computation, not the same speed: this is a classical simulation (see the top of this README).
 
@@ -92,7 +93,12 @@ feature, real workloads, and a profile of the most expensive functions.
 | `rb.py` | randomized benchmarking: measures the device's error per gate, like a real lab |
 | `qpu.py` | jobs: submit a program, get a job id, status and result |
 
-Devices: `ideal` (20 qubits, no noise) and `dq-5` (5 noisy qubits in a line q0-q1-q2-q3-q4).
+Devices: `ideal` (20 qubits, no noise), `dq-5` (5 noisy qubits in a line q0-q1-q2-q3-q4) and
+`dq-12` (12 noisy qubits in a ladder: two rows of 6 with rungs between them).
+
+Engines (chosen automatically): pure state (no noise), exact noisy density matrix (up to 8
+qubits automatically, 10 on request) and noisy trajectories (9-16 qubits; an average over many
+random noise histories, 300 by default; `--trajectories N`).
 
 `dq-5` calibration (abstract time units; think microseconds):
 
@@ -166,9 +172,10 @@ Mid-circuit measurement, `if`, `reset`, custom `gate` definitions. Routing is si
 7. Famous algorithms: Bernstein-Vazirani, Deutsch-Jozsa, Grover, phase estimation, Shor-15 (v0.8.0)
 8. Faster noisy engine: combined channels, diagonal gates as multiplications (v0.9.0);
    faster pure-state engine (v0.9.1)
-9. Reduce learned mitigation's harm
-10. Web API: submit jobs over HTTP, like a quantum cloud service
-11. App on top of the API
+9. Capacity: trajectory engine (up to 16 noisy qubits), 12-qubit ladder chip dq-12, noisy Shor (v0.10.0)
+10. Reduce learned mitigation's harm
+11. Web API: submit jobs over HTTP, like a quantum cloud service
+12. App on top of the API
 
 See EXPERIMENTS.md for investigations and the decisions they led to.
 

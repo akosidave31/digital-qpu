@@ -38,6 +38,7 @@ def main(argv=None):
     r.add_argument("--no-compile", action="store_true", help="run the program's gates directly")
     r.add_argument("--day", type=int, default=None)
     r.add_argument("--mitigate", choices=["readout", "learned", "learned-linear"], default=None)
+    r.add_argument("--trajectories", type=int, default=300, help="number of trajectories when that engine is used")
     cp = sub.add_parser("compile", help="show the native program the device will run")
     cp.add_argument("file")
     cp.add_argument("--device", default="dq-5")
@@ -64,9 +65,13 @@ def main(argv=None):
     al.add_argument("--day", type=int, default=None)
     al.add_argument("--shots", type=int, default=2000)
     al.add_argument("--seed", type=int, default=1)
+    al.add_argument("--trajectories", type=int, default=300)
     sh = sub.add_parser("shor", help="Shor's algorithm factoring 15, step by step")
     sh.add_argument("--shots", type=int, default=2000)
     sh.add_argument("--seed", type=int, default=1)
+    sh.add_argument("--device", default="ideal")
+    sh.add_argument("--day", type=int, default=None)
+    sh.add_argument("--trajectories", type=int, default=300)
     sp = sub.add_parser("speed", help="speed benchmark: where does the time go? (changes nothing)")
     sp.add_argument("--quick", action="store_true")
     sp.add_argument("--save", default=None, help="write results to a JSON file (a baseline to compare against)")
@@ -149,7 +154,7 @@ def main(argv=None):
             ai, si = alg["answer"](ideal), alg["success"](ideal)
             line = f"   expected {alg['expected']} | ideal {ai} ({si * 100:.0f}%) {'OK' if ai == alg['expected'] else 'WRONG'}"
             if alg["qubits"] <= dev.n_qubits:
-                noisy = QPU(dev).run(alg["qasm"], shots=a.shots, seed=a.seed).result()["counts"]
+                noisy = QPU(dev).run(alg["qasm"], shots=a.shots, seed=a.seed, n_traj=a.trajectories).result()["counts"]
                 an, sn = alg["answer"](noisy), alg["success"](noisy)
                 line += f" | {dev.name} {an} ({sn * 100:.0f}%) {'OK' if an == alg['expected'] else 'WRONG'}"
             else:
@@ -163,8 +168,17 @@ def main(argv=None):
         from fractions import Fraction
         from math import gcd
         alg = shor15()
-        counts = QPU("ideal").run(alg["qasm"], shots=a.shots, seed=a.seed).result()["counts"]
-        print("Shor's algorithm: factor N = 15 with a = 7 (8 qubits: 4 counting + 4 work)")
+        import time as _time
+        t0 = _time.time()
+        r = QPU(a.device, day=a.day).run(alg["qasm"], shots=a.shots, seed=a.seed, n_traj=a.trajectories).result()
+        counts = r["counts"]
+        print(f"Shor's algorithm: factor N = 15 with a = 7 (8 qubits: 4 counting + 4 work) on {r['device']}")
+        if r["compiled"]:
+            c = r["compiled"]
+            print(f"   compiled: {c['n_ops']} native ops ({c['n_2q']} cz), {c['swaps']} swaps; "
+                  f"circuit time {r['circuit_time']:g}; engine {r['engine']}; {_time.time() - t0:.0f} s")
+        useful = (counts.get("0100", 0) + counts.get("1100", 0)) / sum(counts.values())
+        print(f"   useful outcomes (y = 4 or 12): {useful * 100:.0f}% (ideal: 50%)")
         print("1. quantum part: measure the 4 counting qubits")
         for k, c in sorted(counts.items(), key=lambda kv: -kv[1]):
             print(f"   {k} (y = {int(k, 2):>2})  {c:>5}  {'#' * round(30 * c / a.shots)}")
@@ -223,7 +237,7 @@ def main(argv=None):
         return 0
     with open(a.file, encoding="utf-8") as f:
         job = QPU(a.device, day=a.day).run(f.read(), shots=a.shots, seed=a.seed, compile=not a.no_compile,
-                                            mitigate=a.mitigate)
+                                            mitigate=a.mitigate, n_traj=a.trajectories)
     if job.status == "ERROR":
         print(f"ERROR: {job.error}", file=sys.stderr)
         return 1
@@ -232,7 +246,7 @@ def main(argv=None):
         print(json.dumps(res, indent=2))
         return 0
     print(f"job {res['job_id']} on {res['device']}: {res['shots']} shots, "
-          f"depth {res['depth']}, circuit time {res['circuit_time']:g}")
+          f"depth {res['depth']}, circuit time {res['circuit_time']:g}, engine {res['engine']}")
     if res["compiled"]:
         c = res["compiled"]
         print(f"compiled: {c['n_ops']} native ops ({c['n_2q']} cz, {c['n_sx']} sx/x, {c['n_rz']} virtual rz), "

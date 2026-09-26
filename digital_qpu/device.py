@@ -87,6 +87,21 @@ DEVICES = {
                    description="noisy 5-qubit line: q0-q1-q2-q3-q4 (native rz sx x cz; decoherence, gate, readout errors, crosstalk)"),
 }
 
+_LADDER = [(i, i + 1) for i in range(5)] + [(i, i + 1) for i in range(6, 11)] + [(i, i + 6) for i in range(6)]
+DEVICES["dq-12"] = Device(
+    "dq-12", 12,
+    T1=[50.0, 45.0, 55.0, 48.0, 52.0, 47.0, 53.0, 49.0, 51.0, 46.0, 54.0, 50.0],
+    T_phi=[40.0, 35.0, 45.0, 38.0, 42.0, 37.0, 43.0, 39.0, 41.0, 36.0, 44.0, 40.0],
+    gate_time_1q=0.02, gate_time_2q=0.15,
+    readout_error=[(0.010, 0.030), (0.015, 0.035), (0.010, 0.025), (0.020, 0.040), (0.012, 0.030), (0.014, 0.032),
+                   (0.011, 0.028), (0.016, 0.036), (0.012, 0.027), (0.018, 0.038), (0.010, 0.029), (0.013, 0.033)],
+    coupling=_LADDER,
+    gate_error_1q=[6e-4, 8e-4, 5e-4, 9e-4, 7e-4, 6e-4, 7e-4, 8e-4, 5e-4, 9e-4, 6e-4, 7e-4],
+    gate_error_2q={p: 0.009 + 0.001 * (i % 6) for i, p in enumerate(_LADDER)},
+    native_gates=("rz", "sx", "x", "cz"), virtual_rz=True,
+    zz={p: 0.08 + 0.014 * (i % 6) for i, p in enumerate(_LADDER)}, drive_crosstalk=0.01,
+    description="noisy 12-qubit ladder: two rows of 6 (q0-q5, q6-q11) with rungs q_i-q_(i+6)")
+
 
 def get_device(name):
     if isinstance(name, Device):
