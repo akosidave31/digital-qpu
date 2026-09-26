@@ -229,7 +229,8 @@ ignores which qubits have the lowest error today.
 12. Reduce learned mitigation's harm: conservative correction (v0.13.0)
 13. Web API: submit jobs over HTTP, like a quantum cloud service (v0.14.0)
 14. App on top of the API
-15. Trainable Grover: variational circuit trained on the noisy chip (v0.16.0, `notebooks/train_grover.ipynb`)
+15. Trainable Grover: variational circuit trained on the noisy chip (v0.16.0: found to memorise the answer;
+    v0.17.0: trained on all 8 marked items at once, with a permanent memorisation check)
 
 See EXPERIMENTS.md for investigations and the decisions they led to.
 

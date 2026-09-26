@@ -264,3 +264,19 @@ Grover with 1 round averaged 0.423 vs 0.340 with 2 rounds - on this noisy chip t
 although it is worse on the ideal chip (78.1% vs 94.5%).
 Next (v0.17.0): train one set of angles on all 8 marked items at once (average success), so memorising an
 answer cannot pay; compare with normal Grover's average for every marked item.
+
+## v0.17.0 - joint training on all marked items (fixing v0.16.0's memorisation)
+
+Change: JointGrover - one shared set of angles scored on the AVERAGE success over all 8 possible marked
+items (8 oracles), so memorising one answer cannot pay. Same circuit shape as v0.16.0 (oracle and CCZs fixed,
+rz-ry-rz trainable layers), same start (fixed Grover), parameter shift + Adam, lr 0.05, 40 epochs, 1 and 2
+rounds, trained on ideal and on dq-5 (nominal), tested on dq-5 calibration days 1-10 (unseen).
+Permanent memorisation check: every trained circuit is evaluated on the ideal chip for each marked item;
+if max - min > 0.10 it is flagged SPECIALISED and does not count toward any target. A test shows the
+check catches v0.16.0-style single-item training.
+Targets (set before running): tests pass; ideal: best valid trained mean >= 0.97 (fixed Grover 0.9453);
+dq-5 (training calibration): best valid trained mean >= fixed Grover mean + 0.03; unseen days: best valid
+dq-5-trained circuit minus the BETTER fixed Grover (1 or 2 rounds, whichever averages higher) >= +0.02.
+Also reported, not a target: does fixed Grover with 1 round still beat 2 rounds on the noisy chip when
+averaged over all 8 marked items (replication of the v0.16.0 finding)?
+Result: (pending)

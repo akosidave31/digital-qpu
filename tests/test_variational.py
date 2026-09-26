@@ -54,3 +54,52 @@ def test_summary_reads_the_results():
             for d in range(1, 4)}
     lines = summarize({"runs": runs, "test": test})
     assert "MET" in lines[0] and "MET" in lines[1] and "MET" in lines[2]
+
+
+# ---- v0.17.0: joint training and the permanent memorisation check ----
+from digital_qpu.variational import JointGrover, per_item_spread, fixed_grover_mean, summarize_joint, SPREAD_LIMIT
+
+
+def test_joint_objective_is_the_mean_over_all_marked_items():
+    jg = JointGrover(rounds=2)
+    p0 = jg.grover_init()
+    items = jg.per_item(p0, IDEAL)
+    assert len(items) == 8 and abs(jg.success(p0, IDEAL) - np.mean(items)) < 1e-12
+    th = math.asin(1 / math.sqrt(8))
+    assert all(abs(v - math.sin(5 * th) ** 2) < 1e-9 for v in items)          # Grover: same for every item
+    assert abs(fixed_grover_mean(IDEAL, 2) - math.sin(5 * th) ** 2) < 1e-9
+    assert per_item_spread(p0, 2)[1] < 1e-9
+
+
+def test_joint_gradient_matches_finite_differences():
+    jg = JointGrover(rounds=1)
+    p = np.random.default_rng(11).uniform(-3, 3, jg.n_params)
+    g = jg.gradient(p, IDEAL)
+    eps = 1e-4
+    for k in range(0, jg.n_params, 3):
+        e = np.zeros(jg.n_params)
+        e[k] = eps
+        fd = (jg.success(p + e, IDEAL) - jg.success(p - e, IDEAL)) / (2 * eps)
+        assert abs(fd - g[k]) < 1e-6, k
+
+
+def test_memorisation_check_catches_single_item_training():
+    """The v0.16.0 failure: trained on one marked item, the circuit favours that answer."""
+    vg = VariationalGrover(marked=0b101, rounds=1)
+    best, _ = vg.train(IDEAL, vg.grover_init(), epochs=10, lr=0.05)
+    vals, spread = per_item_spread(best, 1)
+    assert vals[0b101] == max(vals) and spread > SPREAD_LIMIT
+
+
+def test_summary_ignores_specialised_circuits():
+    run = lambda start, best, spread: {"start": start, "best": best, "ideal_spread": spread}
+    runs = {"ideal/rounds2": run(0.945, 0.98, 0.02), "ideal/rounds1": run(0.78, 0.99, 0.5),
+            "dq-5/rounds2": run(0.36, 0.40, 0.05), "dq-5/rounds1": run(0.40, 0.60, 0.6)}
+    test = {d: {"fixed/rounds2": 0.34, "fixed/rounds1": 0.42, "ideal-trained/rounds2": 0.35,
+                "dq-5-trained/rounds2": 0.45, "ideal-trained/rounds1": 0.5, "dq-5-trained/rounds1": 0.6}
+            for d in range(1, 4)}
+    lines = summarize_joint({"runs": runs, "test": test})
+    text = "\n".join(lines)
+    assert text.count("SPECIALISED") == 2
+    assert "best valid trained 0.9800" in text                               # the 0.99 run does not count
+    assert "dq-5-trained/rounds2 minus best fixed (fixed/rounds1)" in text   # the specialised 0.60 is ignored

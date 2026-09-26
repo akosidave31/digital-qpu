@@ -11,8 +11,9 @@ Training: success = exact probability of the marked answer (no shot noise), grad
 parameter-shift rule, Adam optimizer.
 
 Honest limits:
-- The reward needs the marked item, so this does NOT search better. It learns the best circuit for
-  a known task on a given (simulated) chip - noise-aware circuit optimisation.
+- Trained on ONE marked item (v0.16.0), the circuit learned to output that answer while partly ignoring
+  the oracle (memorisation; see EXPERIMENTS.md). Since v0.17.0, JointGrover trains one set of angles on
+  ALL 8 marked items at once, and per_item_spread() flags any circuit that favours some answers.
 - Parameter shift is exact on the ideal chip. On a noisy chip it is approximate: the compiler turns
   single-qubit gates into sx pulses, and how many depends on the angle, so the noise itself changes
   slightly with the parameters.
@@ -147,7 +148,9 @@ def fixed_grover_success(device, iterations=2, marked=0b101):
 
 
 def experiment(epochs=40, lr=0.05, test_days=range(1, 11), train_device="dq-5", log=print):
-    """The whole v0.16.0 experiment (for Colab): train on the ideal chip and on train_device (nominal
+    """FLAWED (kept to reproduce the v0.16.0 record): trains on ONE marked item, so the circuit can learn
+    the answer instead of using the oracle. Use joint_experiment instead.
+    The whole v0.16.0 experiment (for Colab): train on the ideal chip and on train_device (nominal
     calibration), then test every circuit on calibration days it never saw. Returns a results dict."""
     ideal, chip = get_device("ideal"), get_device(train_device)
     out = {"epochs": epochs, "lr": lr, "train_device": train_device, "runs": {}, "test": {}}
@@ -195,4 +198,114 @@ def summarize(out, train_device="dq-5"):
     lines.append(f"unseen days ({len(diffs)}): {best_key} minus fixed Grover = {diffs.mean():+.4f} +/- {se:.4f} "
                  f"(better on {int((diffs > 0).sum())}/{len(diffs)} days)  target >= +0.05 on average: "
                  f"{'MET' if diffs.mean() >= 0.05 else 'MISSED'}")
+    return lines
+
+
+# ---------------------------------------------------------------------------------------------------
+# v0.17.0: joint training over all marked items (no answer can be memorised)
+# ---------------------------------------------------------------------------------------------------
+SPREAD_LIMIT = 0.10       # a trained circuit counts only if, on the ideal chip, max - min over items <= this
+
+
+class JointGrover:
+    """One shared set of angles, scored on the AVERAGE success over all 8 possible marked items.
+    Memorising one answer cannot pay: it helps 1 of 8 oracles and hurts the others."""
+
+    def __init__(self, rounds=2):
+        self.rounds = rounds
+        self.circuits = [VariationalGrover(marked=m, rounds=rounds) for m in range(8)]
+        self.n_params = self.circuits[0].n_params
+
+    def grover_init(self):
+        return self.circuits[0].grover_init()                   # the layers do not depend on the marked item
+
+    def per_item(self, params, device):
+        return [c.success(params, device) for c in self.circuits]
+
+    def success(self, params, device):
+        return float(np.mean(self.per_item(params, device)))
+
+    def gradient(self, params, device):
+        return np.mean([c.gradient(params, device) for c in self.circuits], axis=0)
+
+    train = VariationalGrover.train
+
+
+def per_item_spread(params, rounds, device=None):
+    """(per-item successes on the ideal chip, max - min). The memorisation check."""
+    dev = device or get_device("ideal")
+    vals = [VariationalGrover(marked=m, rounds=rounds).success(np.asarray(params), dev) for m in range(8)]
+    return vals, max(vals) - min(vals)
+
+
+def fixed_grover_mean(device, iterations=2):
+    return float(np.mean([fixed_grover_success(device, iterations, m) for m in range(8)]))
+
+
+def joint_experiment(epochs=40, lr=0.05, test_days=range(1, 11), train_device="dq-5", log=print):
+    """v0.17.0: train JointGrover (all 8 marked items) on the ideal chip and on train_device, both 1 and 2
+    rounds, starting from Grover; check memorisation; test on unseen calibration days. Returns a dict."""
+    ideal, chip = get_device("ideal"), get_device(train_device)
+    out = {"epochs": epochs, "lr": lr, "train_device": train_device, "runs": {}, "test": {}}
+    for rounds in (2, 1):
+        jg = JointGrover(rounds=rounds)
+        for dev_name, dev in (("ideal", ideal), (train_device, chip)):
+            t0 = time.time()
+            p0 = jg.grover_init()
+            start = jg.success(p0, dev)
+            log(f"joint training rounds={rounds} on {dev_name}: start (= fixed Grover, mean of 8 items) {start:.4f}")
+            best, hist = jg.train(dev, p0, epochs=epochs, lr=lr,
+                                  log=lambda t, s: log(f"   epoch {t:3d}  mean success {s:.4f}") if t % 5 == 0 else None)
+            items, spread = per_item_spread(best, rounds)
+            out["runs"][f"{dev_name}/rounds{rounds}"] = {
+                "start": start, "best": max(hist), "history": hist, "params": best.tolist(),
+                "ideal_per_item": items, "ideal_spread": spread, "seconds": time.time() - t0}
+            log(f"   best mean {max(hist):.4f}  | ideal per item {' '.join(f'{v:.2f}' for v in items)} "
+                f"spread {spread:.3f}  ({time.time() - t0:.0f} s)")
+    log(f"testing on {train_device} calibration days {list(test_days)} (never seen), mean over all 8 marked items")
+    for d in test_days:
+        dev = calibrate(chip, d)
+        row = {"fixed/rounds2": fixed_grover_mean(dev, 2), "fixed/rounds1": fixed_grover_mean(dev, 1)}
+        for rounds in (2, 1):
+            jg = JointGrover(rounds=rounds)
+            for src in ("ideal", train_device):
+                row[f"{src}-trained/rounds{rounds}"] = jg.success(
+                    np.array(out["runs"][f"{src}/rounds{rounds}"]["params"]), dev)
+        out["test"][d] = row
+        log(f"   day {d:>2}: " + "  ".join(f"{k} {v:.3f}" for k, v in row.items()))
+    return out
+
+
+def summarize_joint(out, train_device="dq-5"):
+    """Verdicts for the v0.17.0 targets (EXPERIMENTS.md). A run only counts if it passes the spread check."""
+    R, T = out["runs"], out["test"]
+    ok = lambda k: R[k]["ideal_spread"] <= SPREAD_LIMIT
+    lines = []
+    for k in R:
+        lines.append(f"memorisation check {k:15}: ideal spread {R[k]['ideal_spread']:.3f} "
+                     f"{'OK' if ok(k) else 'SPECIALISED - does not count'}")
+    ideal_valid = [R[k]["best"] for k in ("ideal/rounds2", "ideal/rounds1") if ok(k)]
+    ib = max(ideal_valid) if ideal_valid else float("nan")
+    lines.append(f"ideal: fixed Grover mean {R['ideal/rounds2']['start']:.4f} -> best valid trained {ib:.4f}  "
+                 f"target >= 0.97: {'MET' if ideal_valid and ib >= 0.97 else 'MISSED'}")
+    chip_keys = [k for k in (f"{train_device}/rounds2", f"{train_device}/rounds1") if ok(k)]
+    fixed_chip = R[f"{train_device}/rounds2"]["start"]
+    cb = max((R[k]["best"] for k in chip_keys), default=float("nan"))
+    lines.append(f"{train_device} (training calibration): fixed Grover mean {fixed_chip:.4f} -> best valid trained "
+                 f"{cb:.4f}  target >= fixed + 0.03: {'MET' if chip_keys and cb >= fixed_chip + 0.03 else 'MISSED'}")
+    f2 = np.mean([r["fixed/rounds2"] for r in T.values()])
+    f1 = np.mean([r["fixed/rounds1"] for r in T.values()])
+    base_key = "fixed/rounds1" if f1 > f2 else "fixed/rounds2"
+    lines.append(f"unseen days: fixed Grover mean, 1 round {f1:.4f} vs 2 rounds {f2:.4f} "
+                 f"(replication of v0.16.0: shorter wins on the noisy chip: {'YES' if f1 > f2 else 'NO'})")
+    cands = [f"{train_device}-trained/rounds{int(k[-1])}" for k in chip_keys]
+    if not cands:
+        lines.append("unseen days: no valid trained circuit -> target MISSED")
+        return lines
+    best_key = max(cands, key=lambda k: np.mean([r[k] for r in T.values()]))
+    diffs = np.array([r[best_key] - r[base_key] for r in T.values()])
+    se = diffs.std(ddof=1) / math.sqrt(len(diffs)) if len(diffs) > 1 else float("nan")
+    lines.append(f"unseen days ({len(diffs)}): {best_key} minus best fixed ({base_key}) = {diffs.mean():+.4f} "
+                 f"+/- {se:.4f} (better on {int((diffs > 0).sum())}/{len(diffs)} days)  target >= +0.02: "
+                 f"{'MET' if diffs.mean() >= 0.02 else 'MISSED'}")
     return lines
