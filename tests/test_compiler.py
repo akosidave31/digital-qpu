@@ -78,7 +78,8 @@ def test_routing_inserts_swaps_only_when_needed():
     far = parse("OPENQASM 2.0; qreg q[5]; creg c[5]; x q[0]; cx q[0], q[4]; measure q -> c;")
     assert transpile(near, CLEAN_LINE)[1]["swaps"] == 0
     native, info = transpile(far, CLEAN_LINE)
-    assert info["swaps"] == 3
+    assert info["swaps"] == 0                    # smart placement puts q0 next to q4
+    assert transpile(far, CLEAN_LINE, router="basic")[1]["swaps"] == 3
     P = probabilities(native, CLEAN_LINE)
     assert abs(P["10001"] - 1) < 1e-9          # q0 and q4 end up 1, reported on the right bits
 
@@ -95,7 +96,7 @@ def test_qpu_now_runs_unwired_programs_on_dq5():
     job = QPU("dq-5").run(qasm, shots=500, seed=3)
     assert job.status == "DONE", job.error
     r = job.result()
-    assert r["compiled"]["swaps"] == 3 and set(r["compiled"]) >= {"n_ops", "n_2q", "layout"}
+    assert r["compiled"]["swaps"] <= 3 and set(r["compiled"]) >= {"n_ops", "n_2q", "layout", "router"}
     top = sorted(r["counts"], key=r["counts"].get, reverse=True)[:2]
     assert set(top) == {"00000", "10001"}
     assert QPU("dq-5").run(qasm, compile=False).status == "ERROR"      # raw program is rejected

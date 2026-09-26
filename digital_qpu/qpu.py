@@ -27,8 +27,10 @@ class QPU:
         """day: use the device's calibration on that day (None = nominal values)."""
         self.device = calibrate(get_device(device), day)
 
-    def run(self, qasm, shots=1024, seed=None, compile=True, mitigate=None, method="auto", n_traj=300):
+    def run(self, qasm, shots=1024, seed=None, compile=True, mitigate=None, method="auto", n_traj=300,
+            router="auto"):
         """compile=True (default): devices with native gates get the program transpiled first.
+        router: auto (look-ahead, or basic if that needs fewer SWAPs) | lookahead | basic.
         mitigate="readout": also return readout-mitigated probabilities.
         mitigate="learned": readout mitigation + learned correction with the MLP (best on average).
         mitigate="learned-linear": same with the linear model (makes results worse less often)."""
@@ -39,7 +41,7 @@ class QPU:
             program = parse(qasm)
             info = None
             if compile and self.device.native_gates is not None:
-                program, info = transpile(program, self.device)
+                program, info = transpile(program, self.device, router=router)
                 bad = {o.name for o in program.ops} - set(self.device.native_gates)
                 if bad:
                     raise RuntimeError(f"compiler produced non-native gates: {bad}")

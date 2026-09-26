@@ -9,7 +9,9 @@
                   python -m digital_qpu algorithms [--device dq-5] [--shots 2000]   (famous quantum algorithms)
                   python -m digital_qpu shor [--shots 2000]                         (factor 15, step by step)
                   python -m digital_qpu speed [--quick] [--save FILE.json] [--compare FILE.json]
-                  run / compile / rb / zz also take --day N; run also takes --mitigate readout|learned|learned-linear"""
+                  python -m digital_qpu routing                                     (basic vs look-ahead router)
+                  run / compile / rb / zz also take --day N; run also takes --mitigate readout|learned|learned-linear
+                  run / compile / algorithms / shor also take --router auto|lookahead|basic"""
 import argparse
 import numpy as np
 import json
@@ -23,6 +25,26 @@ from .algorithms import shor_factors as shor_factors_cli
 from .device import get_device
 from .qasm import parse
 from .compiler import transpile, to_qasm
+
+ROUTERS = ["auto", "lookahead", "basic"]
+
+
+def routing_report(device_names):
+    """SWAPs and cz gates for every algorithm: basic router vs the default (auto) router."""
+    from .algorithms import all_algorithms
+    rows = []
+    for name in device_names:
+        dev = get_device(name)
+        for alg in all_algorithms():
+            if alg["qubits"] > dev.n_qubits:
+                continue
+            prog = parse(alg["qasm"])
+            _, old = transpile(prog, dev, router="basic")
+            _, new = transpile(prog, dev)
+            rows.append({"algorithm": alg["name"], "device": name, "swaps_basic": old["swaps"],
+                         "swaps_new": new["swaps"], "cz_basic": old["n_2q"], "cz_new": new["n_2q"],
+                         "router": new["router"]})
+    return rows
 
 
 def main(argv=None):
@@ -39,10 +61,14 @@ def main(argv=None):
     r.add_argument("--day", type=int, default=None)
     r.add_argument("--mitigate", choices=["readout", "learned", "learned-linear"], default=None)
     r.add_argument("--trajectories", type=int, default=300, help="number of trajectories when that engine is used")
+    r.add_argument("--router", choices=ROUTERS, default="auto")
     cp = sub.add_parser("compile", help="show the native program the device will run")
     cp.add_argument("file")
     cp.add_argument("--device", default="dq-5")
     cp.add_argument("--day", type=int, default=None)
+    cp.add_argument("--router", choices=ROUTERS, default="auto")
+    ro = sub.add_parser("routing", help="compare the basic and look-ahead routers on the algorithms")
+    ro.add_argument("--devices", nargs="+", default=["dq-5", "dq-12"])
     b = sub.add_parser("rb", help="randomized benchmarking: measure error per gate")
     b.add_argument("--device", default="dq-5")
     b.add_argument("--qubit", type=int, default=0)
@@ -66,12 +92,14 @@ def main(argv=None):
     al.add_argument("--shots", type=int, default=2000)
     al.add_argument("--seed", type=int, default=1)
     al.add_argument("--trajectories", type=int, default=300)
+    al.add_argument("--router", choices=ROUTERS, default="auto")
     sh = sub.add_parser("shor", help="Shor's algorithm factoring 15, step by step")
     sh.add_argument("--shots", type=int, default=2000)
     sh.add_argument("--seed", type=int, default=1)
     sh.add_argument("--device", default="ideal")
     sh.add_argument("--day", type=int, default=None)
     sh.add_argument("--trajectories", type=int, default=300)
+    sh.add_argument("--router", choices=ROUTERS, default="auto")
     sp = sub.add_parser("speed", help="speed benchmark: where does the time go? (changes nothing)")
     sp.add_argument("--quick", action="store_true")
     sp.add_argument("--save", default=None, help="write results to a JSON file (a baseline to compare against)")
@@ -154,7 +182,8 @@ def main(argv=None):
             ai, si = alg["answer"](ideal), alg["success"](ideal)
             line = f"   expected {alg['expected']} | ideal {ai} ({si * 100:.0f}%) {'OK' if ai == alg['expected'] else 'WRONG'}"
             if alg["qubits"] <= dev.n_qubits:
-                noisy = QPU(dev).run(alg["qasm"], shots=a.shots, seed=a.seed, n_traj=a.trajectories).result()["counts"]
+                noisy = QPU(dev).run(alg["qasm"], shots=a.shots, seed=a.seed, n_traj=a.trajectories,
+                                     router=a.router).result()["counts"]
                 an, sn = alg["answer"](noisy), alg["success"](noisy)
                 line += f" | {dev.name} {an} ({sn * 100:.0f}%) {'OK' if an == alg['expected'] else 'WRONG'}"
             else:
@@ -170,12 +199,13 @@ def main(argv=None):
         alg = shor15()
         import time as _time
         t0 = _time.time()
-        r = QPU(a.device, day=a.day).run(alg["qasm"], shots=a.shots, seed=a.seed, n_traj=a.trajectories).result()
+        r = QPU(a.device, day=a.day).run(alg["qasm"], shots=a.shots, seed=a.seed, n_traj=a.trajectories,
+                                         router=a.router).result()
         counts = r["counts"]
         print(f"Shor's algorithm: factor N = 15 with a = 7 (8 qubits: 4 counting + 4 work) on {r['device']}")
         if r["compiled"]:
             c = r["compiled"]
-            print(f"   compiled: {c['n_ops']} native ops ({c['n_2q']} cz), {c['swaps']} swaps; "
+            print(f"   compiled: {c['n_ops']} native ops ({c['n_2q']} cz), {c['swaps']} swaps ({c['router']} router); "
                   f"circuit time {r['circuit_time']:g}; engine {r['engine']}; {_time.time() - t0:.0f} s")
         useful = (counts.get("0100", 0) + counts.get("1100", 0)) / sum(counts.values())
         print(f"   useful outcomes (y = 4 or 12): {useful * 100:.0f}% (ideal: 50%)")
@@ -190,8 +220,13 @@ def main(argv=None):
                 continue
             fr = Fraction(y, 16).limit_denominator(15)
             r = fr.denominator
-            good = r % 2 == 0 and pow(7, r, 15) == 1
-            print(f"   y = {y:>2}: {y}/16 = {fr} -> r = {r}  {'7^' + str(r) + ' mod 15 = 1  -> period found' if good else '(not the period)'}")
+            if not (r % 2 == 0 and pow(7, r, 15) == 1):
+                verdict = "(not the period)"
+            elif 1 < gcd(pow(7, r // 2) - 1, 15) < 15:
+                verdict = f"7^{r} mod 15 = 1  -> period found"
+            else:
+                verdict = f"7^{r} mod 15 = 1, but only trivial factors (a multiple of the period)"
+            print(f"   y = {y:>2}: {y}/16 = {fr} -> r = {r}  {verdict}")
         r, f = shor_factors_cli(counts)
         if f:
             print(f"3. factors: gcd(7^{r // 2} - 1, 15) = {gcd(7 ** (r // 2) - 1, 15)}, "
@@ -216,10 +251,24 @@ def main(argv=None):
     if a.cmd == "compile":
         dev = calibrate(get_device(a.device), a.day)
         with open(a.file, encoding="utf-8") as f:
-            native, info = transpile(parse(f.read()), dev)
+            native, info = transpile(parse(f.read()), dev, router=a.router)
         print(to_qasm(native))
         print(f"// {info['n_ops']} native ops: {info['n_2q']} cz, {info['n_sx']} sx/x pulses, "
-              f"{info['n_rz']} virtual rz; {info['swaps']} swaps inserted; layout {info['layout']}")
+              f"{info['n_rz']} virtual rz; {info['swaps']} swaps inserted ({info['router']} router)")
+        print(f"// layout (logical -> physical): start {info['initial_layout']}, end {info['layout']}")
+        return 0
+    if a.cmd == "routing":
+        rows = routing_report(a.devices)
+        print(f"  {'algorithm':<28}{'device':<8}{'swaps basic->new':>18}{'cz basic->new':>16}")
+        for r in rows:
+            print(f"  {r['algorithm']:<28}{r['device']:<8}{r['swaps_basic']:>9} -> {r['swaps_new']:<5}"
+                  f"{r['cz_basic']:>8} -> {r['cz_new']:<5}")
+        sb, sn = sum(r["swaps_basic"] for r in rows), sum(r["swaps_new"] for r in rows)
+        cb, cn = sum(r["cz_basic"] for r in rows), sum(r["cz_new"] for r in rows)
+        print(f"  {'total':<36}{sb:>9} -> {sn:<5}{cb:>8} -> {cn:<5}")
+        worse = [r for r in rows if r["swaps_new"] > r["swaps_basic"]]
+        print("  new router never needs more SWAPs than the basic one" if not worse
+              else f"  WARNING: more SWAPs than basic on {len(worse)} circuit(s)")
         return 0
     if a.cmd == "rb":
         res = randomized_benchmarking(calibrate(get_device(a.device), a.day), a.qubit, seed=a.seed)
@@ -237,7 +286,7 @@ def main(argv=None):
         return 0
     with open(a.file, encoding="utf-8") as f:
         job = QPU(a.device, day=a.day).run(f.read(), shots=a.shots, seed=a.seed, compile=not a.no_compile,
-                                            mitigate=a.mitigate, n_traj=a.trajectories)
+                                            mitigate=a.mitigate, n_traj=a.trajectories, router=a.router)
     if job.status == "ERROR":
         print(f"ERROR: {job.error}", file=sys.stderr)
         return 1
@@ -250,7 +299,7 @@ def main(argv=None):
     if res["compiled"]:
         c = res["compiled"]
         print(f"compiled: {c['n_ops']} native ops ({c['n_2q']} cz, {c['n_sx']} sx/x, {c['n_rz']} virtual rz), "
-              f"{c['swaps']} swaps inserted")
+              f"{c['swaps']} swaps inserted ({c['router']} router)")
     for k, c in res["counts"].items():
         print(f"  {k}  {c:>6}  {'#' * round(40 * c / res['shots'])}")
     if "mitigated" in res:

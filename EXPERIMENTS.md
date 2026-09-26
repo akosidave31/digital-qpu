@@ -76,7 +76,10 @@ formula; cached small matrices. The original engine is kept as final_state_refer
 Targets (set before measuring): gate-error cost 9.3x -> < 3x; noisy Grover 0.73 s -> < 0.3 s;
 randomized benchmarking 12.8 s -> < 4 s; results identical to the reference (< 1e-12) and all
 tests + Qiskit checks unchanged.
-Result: (pending)
+Result (phone): all targets met. Gate-error cost 0.4x no-noise; noisy Grover 0.037 s (19.8x);
+randomized benchmarking 0.32 s (39.5x); training 9.8x; noisy engine 11-14x at 2-8 qubits;
+test suite 3m23s -> 42s. 456 contractions per Grover run instead of 8,610. Identical results.
+New finding: the pure-state engine (no noise / crosstalk only) is now the slower path.
 
 ## v0.9.1 - fast pure-state engine
 
@@ -86,7 +89,9 @@ swap as a free relabelling of axes; cx as a flip of the half of the state where 
 Targets (set before measuring): ideal 20-qubit GHZ 1.05 s -> < 0.5 s; noise-free Grover
 0.039 s -> < 0.01 s; crosstalk-only Grover 0.086 s -> < 0.02 s; results identical to the
 reference (< 1e-12).
-Result: (pending)
+Result (phone): ideal 20-qubit GHZ 0.351 s (3.3x) - met; noise-free Grover 0.009 s (4.6x) - met;
+crosstalk-only Grover 0.020 s (4.6x) - at the target (printed value rounded; within measurement noise);
+identical to the reference. Test suite 42 s -> 68 s from the new reference-engine equivalence tests.
 
 ## v0.10.0 - capacity: trajectories, a 12-qubit chip, noisy Shor
 
@@ -102,3 +107,33 @@ exact engine ran (7 s); 1232 native ops, 194 cz of which 132 come from 44 SWAPs;
 50%); still factors 15 = 3 x 5. Routing overhead dominates -> smarter routing is the next priority.
 Fixes found during the run: slow-test skipping was missing in this repo; the Shor test wrongly assumed the
 trajectory engine; the 'period found' label also accepts multiples of the period (display only).
+
+Process fix (found while preparing v0.11.0): release packages shipped the maintainer's copy of this file,
+which overwrote results recorded after the previous release (v0.9.0 and v0.9.1 were lost from the current
+file; they remain in git history). Restored above; the maintainer's copy is now updated at every recording.
+
+## v0.11.0 - smarter routing
+
+Change: look-ahead router. Starting placement chosen from several candidates (identity, a greedy
+placement of qubits that interact often, and a "reverse pass" refinement of each); each SWAP must
+bring the gate's qubits one step closer, and among those the one that helps the next 20 two-qubit
+gates most is chosen. "auto" keeps the basic router whenever that needs fewer SWAPs. Also fixes the
+Shor 'period found' label (only an r that gives non-trivial factors is called the period).
+Targets (set before measuring): never more SWAPs than the basic router (test, random circuits on the
+line and ladder); compiled results identical to the original program on a noise-free chip (test);
+fewer SWAPs than v0.10.0 on Grover dq-5 (15) and Shor dq-12 (44); higher noisy success than v0.10.0
+for Grover on dq-5 (32%) and Shor useful outcomes on dq-12 (31%).
+Result (phone): tests pass (147 passed, 2 slow skipped); never more SWAPs than basic - met; identical
+results on a noise-free chip - met. SWAPs: Grover dq-5 15 -> 8 - met; Shor dq-12 44 -> 20 - met; all
+algorithms 108 -> 44 SWAPs, 474 -> 282 cz. Grover noisy success on dq-5 32% -> 37% - met. Shor useful
+outcomes on dq-12 31% -> 28% - target MISSED, although the circuit is shorter (time 27.55 -> 19.62,
+1232 -> 695 native ops; same seed, basic router re-run gives 31%).
+Diagnosis: the loss is almost all one output bit. Classical bit 1 comes out flipped ~30% of the time
+with the new router vs ~15% with the basic one (e.g. 0010 vs 0000: 137/340 vs 64/396); the other bits
+look alike. That bit is read from physical q3, whose calibration is only slightly worse (T1 48, T_phi 38,
+readout 2%/4%), which cannot explain a 30% flip rate - so "a weak qubit" is not the cause. Leading
+hypothesis (not yet tested): coherent errors that depend on placement - always-on ZZ with the
+neighbours of q3 (~0.1 rad per time unit over a ~20-unit circuit) turn into phase errors on a counting
+qubit, which the inverse QFT turns into a flipped output bit. Counting SWAPs alone does not capture
+this. Next (v0.12.0): test the ZZ hypothesis (same run with ZZ off), then a noise-aware router that
+scores layouts by expected error (ZZ exposure, idle time, calibration), not only SWAP count.

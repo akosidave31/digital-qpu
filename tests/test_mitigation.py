@@ -23,7 +23,7 @@ def test_mapping_follows_routed_qubits():
     dev = Device("ro", 5, readout_error=RO, coupling=LINE, native_gates=("rz", "sx", "x", "cz"), virtual_rz=True)
     qasm = "OPENQASM 2.0; qreg q[5]; creg c[5]; x q[0]; cx q[0], q[4]; measure q -> c;"
     noisy, cq, ncl = exact_parts(qasm, dev)
-    assert cq[0] != 0                                # q0 was moved by the router
+    assert cq[0] != 0                                # q0 placed on another physical qubit
     assert abs(readout_mitigate(noisy, dev, cq, ncl)["10001"] - 1) < 1e-9
 
 

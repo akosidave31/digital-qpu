@@ -134,6 +134,18 @@ material defect drops T1 to 20-50% of normal. ZZ comes from the chip design and 
 See what the chip will actually run:
 
     digital-qpu compile examples/ghz5.qasm
+
+Routing (v0.11.0): when two qubits that must interact aren't wired together, the compiler inserts
+SWAPs. It first picks a good starting placement (qubits that talk a lot go next to each other), then
+chooses each SWAP by looking at the next 20 two-qubit gates, and keeps the older simple router if
+that happens to need fewer SWAPs. Compare them:
+
+    digital-qpu routing                              # SWAPs and cz gates: basic vs new router
+    digital-qpu compile examples/algorithms/grover3.qasm --router basic
+    digital-qpu run examples/algorithms/grover3.qasm --router lookahead
+
+Programs are placed on the smallest connected block of qubits 0..m-1 that fits them, so the
+simulated register stays small (Shor on dq-12 uses qubits 0-7).
 Gate times: 0.02 (1-qubit), 0.15 (2-qubit). Error values use Qiskit Aer's depolarizing parameter.
 
 Measure it yourself, like a lab would:
@@ -158,8 +170,9 @@ Measure it yourself, like a lab would:
 
 ## Not supported yet
 
-Mid-circuit measurement, `if`, `reset`, custom `gate` definitions. Routing is simple
-(shortest-path SWAPs, fixed initial layout) - real compilers search for cheaper layouts.
+Mid-circuit measurement, `if`, `reset`, custom `gate` definitions. Routing searches only a few
+starting layouts and one prefix block of qubits - not an optimal (exhaustive) search, and it
+ignores which qubits have the lowest error today.
 
 ## Roadmap
 
@@ -173,9 +186,10 @@ Mid-circuit measurement, `if`, `reset`, custom `gate` definitions. Routing is si
 8. Faster noisy engine: combined channels, diagonal gates as multiplications (v0.9.0);
    faster pure-state engine (v0.9.1)
 9. Capacity: trajectory engine (up to 16 noisy qubits), 12-qubit ladder chip dq-12, noisy Shor (v0.10.0)
-10. Reduce learned mitigation's harm
-11. Web API: submit jobs over HTTP, like a quantum cloud service
-12. App on top of the API
+10. Smarter routing: better initial placement + look-ahead SWAP choice (v0.11.0)
+11. Reduce learned mitigation's harm
+12. Web API: submit jobs over HTTP, like a quantum cloud service
+13. App on top of the API
 
 See EXPERIMENTS.md for investigations and the decisions they led to.
 
