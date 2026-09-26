@@ -9,3 +9,6 @@ dist/
 venv/
 # trained model files (regenerate with build_ensemble / build_ensemble2)
 *.npz
+grover_results.json
+grover_log.txt
+nohup.out

@@ -248,4 +248,19 @@ search; classical simulation, no speedup.
 Targets (set before running): tests pass; the trainable circuit at its Grover point reproduces fixed Grover
 exactly (94.53% ideal, 2 rounds; test); ideal best trained >= 0.99; dq-5 best trained >= 0.45;
 unseen days: best dq-5-trained circuit minus fixed Grover >= +0.05 on average.
-Result: (pending)
+Result (phone, Termux, 40 epochs, ~7 min): tests pass (5/5). The script reported all three targets MET
+(ideal 0.9453 -> 1.0000; dq-5 0.3722 -> 0.5753 with 1 round; unseen days +0.206 +/- 0.001, 10/10 days) -
+but these results are INVALID as a better Grover, because of a design flaw found during the run:
+- Warning sign: the 1-round circuit reached 98% on ideal in 5 epochs, above the 78.1% one-oracle-call
+  Grover limit for 8 items.
+- Check: trained angles evaluated with every marked item 000..111 (ideal chip). Normal Grover 0.95 for all.
+  ideal/2 rounds 0.78-1.00 (mean 0.93, below Grover's 0.945); dq-5/2 rounds 0.98 on 101 but 0.03-0.32 on
+  the others; 1-round circuits 0.99-1.00 on 101, 0.27-0.86 on the others.
+- Cause: every single-qubit layer, including the one before the first oracle, was trainable and the reward
+  contained the answer, so training learned to produce 101 while partly ignoring the oracle (memorisation).
+  The tests and targets did not check that the circuit still uses the oracle - the design mistake.
+Genuine finding (fixed circuits, which do use the oracle, marked 101 only): on the unseen dq-5 days fixed
+Grover with 1 round averaged 0.423 vs 0.340 with 2 rounds - on this noisy chip the shorter circuit wins,
+although it is worse on the ideal chip (78.1% vs 94.5%).
+Next (v0.17.0): train one set of angles on all 8 marked items at once (average success), so memorising an
+answer cannot pay; compare with normal Grover's average for every marked item.
