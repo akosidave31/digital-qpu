@@ -73,6 +73,18 @@ def test_scheduling_layers_and_time():
     assert math.isclose(sum(layer_duration(L, dev) for L in layers), dev.gate_time_1q + dev.gate_time_2q)
 
 
+def test_late_start_moves_opening_gates_next_to_first_2q_gate():
+    dev = DEVICES["dq-5"]
+    p = prog(3, "h q[0]; cx q[1], q[2]; cx q[1], q[2]; cx q[0], q[1]; measure q -> c;")
+    early, late = schedule(p, dev, late_start=False), schedule(p, dev)
+    assert len(early) == len(late) == 3
+    assert any(o.name == "h" for o in early[0]) and not any(o.name == "h" for o in late[0])
+    assert any(o.name == "h" for o in late[1])                       # right before cx q[0], q[1]
+    assert sorted(map(str, sum(early, []))) == sorted(map(str, sum(late, [])))
+    lone = prog(2, "x q[1]; h q[0];" + " id q[0];" * 5 + " measure q -> c;")              # no 2-qubit gates: unchanged
+    assert schedule(lone, dev) == schedule(lone, dev, late_start=False)
+
+
 def test_noisy_bell_on_dq5():
     P = probabilities(prog(2, "h q[0]; cx q[0], q[1]; measure q -> c;"), DEVICES["dq-5"])
     assert abs(sum(P.values()) - 1) < 1e-9

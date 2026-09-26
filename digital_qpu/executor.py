@@ -1,5 +1,6 @@
 """Run a Program on a Device using digital_qubit as the qubits.
-Gates are scheduled into time layers (ASAP). Each gate is followed by its depolarizing gate error
+Gates are scheduled into time layers (ASAP, except that a qubit's opening single-qubit gates wait until
+just before its first 2-qubit gate - "late start", like ALAP scheduling on real devices). Each gate is followed by its depolarizing gate error
 (same convention as Qiskit Aer; 'id' is an idle and has none) and, for sx/x pulses, by drive
 crosstalk onto wired neighbours. After each layer, for that layer's duration: always-on ZZ between
 wired pairs, then T1/T_phi noise on EVERY qubit (busy or idle). Readout error at measurement.
@@ -12,12 +13,18 @@ MAX_NOISY_QUBITS = 10
 _ALIASES = {"u1": "p"}
 
 
-def schedule(program, device):
-    """Validate against the device and group ops into layers (as-soon-as-possible)."""
+def schedule(program, device, late_start=True):
+    """Validate against the device and group ops into layers (as-soon-as-possible).
+    late_start=True (default, since v0.12.0): a qubit's single-qubit gates that come before its first
+    2-qubit gate are moved as late as possible, right before that gate, so the qubit waits in |0>
+    (immune to dephasing) instead of in a fragile superposition. Qubits that never take part in a
+    2-qubit gate (e.g. Ramsey and benchmarking circuits) are scheduled exactly as before."""
     if program.n_qubits > device.n_qubits:
         raise QasmError(f"program uses {program.n_qubits} qubits; device '{device.name}' has {device.n_qubits}")
     free = [0] * program.n_qubits
     layers = []
+    lead = {q: [] for q in range(program.n_qubits)}     # leading 1-qubit ops per qubit: (layer, op)
+    first_2q = {}                                        # qubit -> layer of its first 2-qubit gate
     for op in program.ops:
         if len(op.qubits) == 2 and not device.allows(*op.qubits):
             raise QasmError(f"{op.name} q[{op.qubits[0]}],q[{op.qubits[1]}] is not allowed on "
@@ -28,7 +35,22 @@ def schedule(program, device):
         layers[L].append(op)
         for q in op.qubits:
             free[q] = L + 1
-    return layers
+        if len(op.qubits) == 1 and op.qubits[0] not in first_2q:
+            lead[op.qubits[0]].append((L, op))
+        elif len(op.qubits) == 2:
+            for q in op.qubits:
+                first_2q.setdefault(q, L)
+    if not late_start:
+        return layers
+    for q, Lc in first_2q.items():
+        ops = lead[q]
+        if not ops or ops[-1][0] == Lc - 1:
+            continue                                      # already right before the 2-qubit gate
+        # these ops sit in layers 0..k-1 and q is idle from there until Lc, so shifting them keeps order
+        for j, (L, op) in enumerate(ops):
+            layers[L].remove(op)
+            layers[Lc - len(ops) + j].append(op)
+    return [L for L in layers if L]
 
 
 SX = np.array([[1 + 1j, 1 - 1j], [1 - 1j, 1 + 1j]]) / 2

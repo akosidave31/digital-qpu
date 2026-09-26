@@ -84,7 +84,7 @@ feature, real workloads, and a profile of the most expensive functions.
 |---|---|
 | `qasm.py` | parses OpenQASM 2.0 (one qreg/creg; gates id x y z h s sdg t tdg rx ry rz p u1 cx cz swap) |
 | `device.py` | a chip's calibration sheet: per-qubit T1/T_phi, gate times, readout error, wiring |
-| `executor.py` | schedules gates into time layers; each gate has its own error (depolarizing, as in Qiskit Aer); after each layer every qubit (busy or idle) feels T1/T2 noise for that time; readout error at measurement |
+| `executor.py` | schedules gates into time layers (a qubit's opening gates wait until just before its first 2-qubit gate, so it idles in the safe |0> state); each gate has its own error (depolarizing, as in Qiskit Aer); after each layer every qubit (busy or idle) feels T1/T2 noise for that time; readout error at measurement |
 | `compiler.py` | like a real transpiler: routes qubits with SWAPs when they aren't wired together, translates to the chip's native gates (rz, sx, x, cz), merges single-qubit gates and uses as few sx pulses as possible |
 | `crosstalk.py` | Ramsey experiment that measures always-on ZZ crosstalk between two qubits, like a lab |
 | `calibration.py` | day-to-day calibration drift: parameters wander (today resembles yesterday), occasional bad days when a defect drops a qubit's T1 |
@@ -187,9 +187,10 @@ ignores which qubits have the lowest error today.
    faster pure-state engine (v0.9.1)
 9. Capacity: trajectory engine (up to 16 noisy qubits), 12-qubit ladder chip dq-12, noisy Shor (v0.10.0)
 10. Smarter routing: better initial placement + look-ahead SWAP choice (v0.11.0)
-11. Reduce learned mitigation's harm
-12. Web API: submit jobs over HTTP, like a quantum cloud service
-13. App on top of the API
+11. Late start scheduling: qubits stay in |0> until needed, like ALAP on real devices (v0.12.0)
+12. Reduce learned mitigation's harm
+13. Web API: submit jobs over HTTP, like a quantum cloud service
+14. App on top of the API
 
 See EXPERIMENTS.md for investigations and the decisions they led to.
 

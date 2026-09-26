@@ -137,3 +137,31 @@ neighbours of q3 (~0.1 rad per time unit over a ~20-unit circuit) turn into phas
 qubit, which the inverse QFT turns into a flipped output bit. Counting SWAPs alone does not capture
 this. Next (v0.12.0): test the ZZ hypothesis (same run with ZZ off), then a noise-aware router that
 scores layouts by expected error (ZZ exposure, idle time, calibration), not only SWAP count.
+
+## v0.12.0 - late start scheduling
+
+Investigation (after the v0.11.0 Shor miss; exact probabilities, no shot noise, Shor on dq-12):
+- ZZ crosstalk off: the gap stays (bit 1 wrong 32.7% -> 30.0% for look-ahead) - ZZ is NOT the cause.
+- One noise source at a time: look-ahead is better with gate errors only (+4.6 points useful) and drive
+  crosstalk only (+2.7), equal with readout only, worse with T1/T2 only (-4.4; bit 1 wrong 5.3% -> 22.0%).
+- "Counting qubits start their superposition too early because of SWAPs" - rejected: the basic router
+  touches them earlier (op 2-4) than look-ahead does.
+- T1/T2 on one physical qubit at a time: physical q5 alone gives 21.4% bit-1 error with look-ahead
+  (all other qubits, both routers: 0-3%). q5's calibration is normal; it holds counting qubit 2, which
+  only has H at the start and its inverse-QFT gates at the end.
+- Schedule check: q5 gets its first pulse at time 0 but its first cz at 14.67 (q7 similar: 10.17).
+  Cause: the compiler delays that H until the qubit's first 2-qubit gate, but the as-soon-as-possible
+  scheduler slides it back to time 0, so the qubit waits ~15 time units in a superposition that T2
+  dephasing destroys. With the basic router SWAPs happened to use those qubits early, hiding this.
+Change: "late start" - a qubit's single-qubit gates before its first 2-qubit gate are scheduled right
+before that gate (the qubit waits in |0>, which dephasing cannot harm); like ALAP scheduling on real
+devices. Qubits without 2-qubit gates (Ramsey, benchmarking) are scheduled exactly as before.
+Targets (set before measuring): all tests pass, including noise-free equivalence and the Qiskit
+cross-checks; Shor on dq-12 (seed 1, 2000 shots) useful outcomes > 31% (the missed v0.11.0 target);
+Grover on dq-5 not below 35% (v0.11.0: 37%, minus 2 points for shot noise); Shor dq-12 circuit time
+not more than 5% above v0.11.0 (19.62).
+Result (phone): tests pass (148 passed, 2 slow skipped) - met. Shor on dq-12: useful outcomes 28% -> 32%
+(seed 1, 2000 shots) - met; exact (no shot noise) 27.3% -> 32.0%, now above the basic router's 29.8%.
+Bit-1 errors (y = 2, 6, 10, 14) 536 -> 254 shots. Circuit time unchanged (19.62) - met. Grover on
+dq-5 37% - met (unchanged). Next lead: y = 0 and 8 now exceed y = 4 and 12 (456/375 vs 325/318 shots),
+i.e. errors on output bit 2 - a different counting qubit; to investigate the same way.
