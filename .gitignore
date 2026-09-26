@@ -12,3 +12,4 @@ venv/
 grover_results.json
 grover_log.txt
 nohup.out
+followups_log.txt

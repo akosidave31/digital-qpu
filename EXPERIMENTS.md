@@ -400,4 +400,17 @@ simulates the idle qubits below it, including their always-on ZZ.
 Targets (set before running): tests pass; T1 all cases: mean change >= +0.5 points; T2 cases where the auto
 placement uses a bad-day (TLS) qubit, if >= 5 such cases: mean change >= +3 points; T3 worse by more than
 1 point in <= 10% of cases.
-Result: (pending)
+Result (phone, Termux; tests 301 passed, 2 slow skipped):
+A MET: 150 epochs: 0.9565 at epoch 40 -> 0.9734 at 90 -> plateau 0.9739; per item 0.97-0.98, spread 0.008.
+  Retuning the single-qubit layers alone gets just above 97%; the 100% of v0.18.0 needs the phases.
+B: 420 cases (60 days x 7 algorithms); noise-aware chose a different placement in 252.
+  T1 MET: all cases +1.02 +/- 0.10 points.
+  T2 MISSED: the 79 cases where the auto placement uses a bad-day qubit: +2.18 +/- 0.40 points (target +3).
+  T3 MET: worse by more than 1 point in 1.4% of cases (worst -1.83).
+  Per algorithm: Grover standard +1.81 (best +12.91), 1 round +2.05 (best +10.32), exact +1.92 (best +14.52),
+  phase estimation +1.25 (best +11.61), Bernstein-Vazirani +0.13, Deutsch-Jozsa balanced -0.05, constant +0.01.
+Conclusions: calibration-aware placement gives a small, reliable average gain (+1 point) and rarely hurts;
+large gains (+10 to +15) occur on individual days; on bad-qubit days the average gain (+2.2) is real but
+below the +3 expected - possibly partly the known bias (idle qubits below a moved circuit are simulated with
+their crosstalk). Short circuits (BV, DJ) barely depend on placement; longer ones (Grover, phase
+estimation) gain most. Kept opt-in; the default router is unchanged.
