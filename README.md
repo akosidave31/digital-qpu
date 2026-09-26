@@ -71,7 +71,8 @@ makes a result worse than readout alone more often (12% vs 6% of circuit-runs; w
 
 ## Speed
 
-    digital-qpu speed --save baseline.json   # where does the time go? (measurement only)
+    digital-qpu speed --save baseline.json          # where does the time go? (measurement only)
+    digital-qpu speed --compare baseline.json       # how many times faster than a saved baseline
 
 Reports the ideal and noisy engines' time and memory as qubits grow, the cost of each noise
 feature, real workloads, and a profile of the most expensive functions.
@@ -163,9 +164,10 @@ Mid-circuit measurement, `if`, `reset`, custom `gate` definitions. Routing is si
 5. Calibration drift, daily data sheets, bad days (v0.5.0); investigation fixes (v0.5.1)
 6. Error mitigation: benchmark suite + readout baseline (v0.6.0); learned mitigation (v0.7.0/0.7.1)
 7. Famous algorithms: Bernstein-Vazirani, Deutsch-Jozsa, Grover, phase estimation, Shor-15 (v0.8.0)
-8. Reduce learned mitigation's harm (v0.9.0)
-9. Web API: submit jobs over HTTP, like a quantum cloud service
-10. App on top of the API
+8. Faster noisy engine: combined channels, diagonal gates as multiplications (v0.9.0)
+9. Reduce learned mitigation's harm
+10. Web API: submit jobs over HTTP, like a quantum cloud service
+11. App on top of the API
 
 See EXPERIMENTS.md for investigations and the decisions they led to.
 

@@ -89,23 +89,32 @@ def run(quick=False):
     return res
 
 
-def print_report(res):
+def print_report(res, baseline=None):
+    def vs(section, i=None, key=None):
+        if baseline is None:
+            return ""
+        try:
+            old = baseline[section][i]["seconds"] if key is None else baseline[section][key]
+            new = res[section][i]["seconds"] if key is None else res[section][key]
+            return f"   {old / new:6.1f}x faster than baseline" if new > 0 else ""
+        except (KeyError, IndexError, TypeError):
+            return ""
     print(f"speed benchmark  (python {res['python']}, numpy {res['numpy']}, {res['machine']})")
     print("1. ideal state-vector engine, GHZ circuit")
-    for r in res["ideal"]:
-        print(f"   {r['qubits']:>2} qubits  {r['seconds']:8.3f} s   state {r['state_MB']:8.1f} MB")
+    for i, r in enumerate(res["ideal"]):
+        print(f"   {r['qubits']:>2} qubits  {r['seconds']:8.3f} s   state {r['state_MB']:8.1f} MB{vs('ideal', i)}")
     print("2. noisy engine (density matrix), GHZ on a noisy line")
-    for r in res["noisy"]:
-        print(f"   {r['qubits']:>2} qubits  {r['seconds']:8.3f} s   state {r['state_MB']:8.2f} MB   {r['native_ops']} ops")
+    for i, r in enumerate(res["noisy"]):
+        print(f"   {r['qubits']:>2} qubits  {r['seconds']:8.3f} s   state {r['state_MB']:8.2f} MB   {r['native_ops']} ops{vs('noisy', i)}")
     print("3. cost of each noise feature: Grover (3 qubits) compiled on a 5-qubit line")
     base = res["features"][0]["seconds"]
-    for r in res["features"]:
-        print(f"   {r['noise']:<24}{r['seconds']:8.3f} s   ({r['seconds'] / base:5.1f}x no-noise)")
+    for i, r in enumerate(res["features"]):
+        print(f"   {r['noise']:<24}{r['seconds']:8.3f} s   ({r['seconds'] / base:5.1f}x no-noise){vs('features', i)}")
     w = res["workloads"]
     print("4. workloads on dq-5")
-    print(f"   compile Grover            {w['compile_grover3_dq5']:8.3f} s")
-    print(f"   training, per circuit     {w['train_per_circuit']:8.3f} s")
-    print(f"   randomized benchmarking   {w['rb_qubit0']:8.3f} s")
+    print(f"   compile Grover            {w['compile_grover3_dq5']:8.3f} s{vs('workloads', key='compile_grover3_dq5')}")
+    print(f"   training, per circuit     {w['train_per_circuit']:8.3f} s{vs('workloads', key='train_per_circuit')}")
+    print(f"   randomized benchmarking   {w['rb_qubit0']:8.3f} s{vs('workloads', key='rb_qubit0')}")
     print(f"5. where the time goes: one noisy Grover run on dq-5 ({res['profile_total_s']:.2f} s profiled)")
     for r in res["profile_top"]:
         print(f"   {r['share'] * 100:5.1f}%  {r['calls']:>7} calls  {r['function']}")

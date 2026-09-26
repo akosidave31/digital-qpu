@@ -57,4 +57,26 @@ Result (5 calibration days, models retrained each day, 10 circuits each):
 Goal: faster runs (raw speed) and more noisy qubits (capacity), in that order, each measured
 against this baseline. Suspects before measuring: every gate copies the whole state; the 2-qubit
 gate error loops over 15 Pauli terms in Python. To be confirmed or ruled out by the profile.
-Result: (pending)
+Result (phone, perf_baseline_phone.json):
+- ideal engine healthy: 20 qubits in 1.1 s, ~4x per 2 qubits.
+- noisy engine wall: 6 qubits 0.22 s, 8 qubits 3.9 s (~18x per 2 qubits) -> capacity needs a
+  different method (trajectories), not just speed.
+- feature cost (Grover, 5-qubit line): gate errors 9.3x, decoherence 7.8x, crosstalk 2.2x.
+- randomized benchmarking 12.8 s for a 1-qubit experiment.
+- profile: >60% of time in numpy bookkeeping (tensordot, reshape, moveaxis, axis checks) over
+  8,610 calls for one Grover run: call overhead, not arithmetic.
+- suspects: "copying the whole state" mostly WRONG at these sizes; "15-term 2-qubit error loop"
+  CONFIRMED (gate errors most expensive; 1,035 kron calls).
+
+## v0.9.0 - fewer numpy calls, same math
+
+Change: single-qubit steps become 4x4 channel matrices, multiplied together and applied once per
+qubit when needed; cz and ZZ become element-wise multiplications; direct 2-qubit depolarizing
+formula; cached small matrices. The original engine is kept as final_state_reference.
+Targets (set before measuring): gate-error cost 9.3x -> < 3x; noisy Grover 0.73 s -> < 0.3 s;
+randomized benchmarking 12.8 s -> < 4 s; results identical to the reference (< 1e-12) and all
+tests + Qiskit checks unchanged.
+Result (phone): all targets met. Gate-error cost 0.4x no-noise; noisy Grover 0.037 s (19.8x);
+randomized benchmarking 0.32 s (39.5x); training 9.8x; noisy engine 11-14x at 2-8 qubits;
+test suite 3m23s -> 42s. 456 contractions per Grover run instead of 8,610. Identical results.
+New finding: the pure-state engine (no noise / crosstalk only) is now the slower path.

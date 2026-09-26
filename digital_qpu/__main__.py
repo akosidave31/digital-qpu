@@ -8,7 +8,7 @@
                   python -m digital_qpu benchmark [--device dq-5] [--day N] [--shots 4000]
                   python -m digital_qpu algorithms [--device dq-5] [--shots 2000]   (famous quantum algorithms)
                   python -m digital_qpu shor [--shots 2000]                         (factor 15, step by step)
-                  python -m digital_qpu speed [--quick] [--save FILE.json]         (where does the time go?)
+                  python -m digital_qpu speed [--quick] [--save FILE.json] [--compare FILE.json]
                   run / compile / rb / zz also take --day N; run also takes --mitigate readout|learned|learned-linear"""
 import argparse
 import numpy as np
@@ -70,6 +70,7 @@ def main(argv=None):
     sp = sub.add_parser("speed", help="speed benchmark: where does the time go? (changes nothing)")
     sp.add_argument("--quick", action="store_true")
     sp.add_argument("--save", default=None, help="write results to a JSON file (a baseline to compare against)")
+    sp.add_argument("--compare", default=None, help="a saved baseline JSON: show how many times faster")
     hi = sub.add_parser("history", help="how one qubit's calibration drifted over days")
     hi.add_argument("--device", default="dq-5")
     hi.add_argument("--qubit", type=int, default=0)
@@ -131,7 +132,11 @@ def main(argv=None):
     if a.cmd == "speed":
         from .perf import run, print_report, save
         res = run(quick=a.quick)
-        print_report(res)
+        base = None
+        if a.compare:
+            with open(a.compare) as f:
+                base = json.load(f)
+        print_report(res, base)
         if a.save:
             save(res, a.save)
             print(f"saved to {a.save}")
