@@ -63,3 +63,30 @@ def test_fast_engine_matches_reference_on_compiled_algorithms():
         native, _ = transpile(parse(alg["qasm"]), dq5)
         diff = np.max(np.abs(final_state(native, dq5).rho - final_state_reference(native, dq5).rho))
         assert diff < 1e-12, (alg["name"], diff)
+
+
+PURE_CONFIGS = [(), ("zz",), ("drive",), ("zz", "drive")]
+
+
+@pytest.mark.parametrize("feats", PURE_CONFIGS)
+@pytest.mark.parametrize("virtual_rz", [False, True])
+def test_fast_pure_engine_matches_reference(feats, virtual_rz):
+    rng = np.random.default_rng(len(feats) * 10 + int(virtual_rz))
+    for n in (1, 2, 3, 5, 8):
+        dev = device(n, feats, virtual_rz)
+        assert not dev.needs_density
+        for _ in range(4):
+            prog = rand_program(rng, n, 40)
+            diff = np.max(np.abs(final_state(prog, dev).psi - final_state_reference(prog, dev).psi))
+            assert diff < 1e-12, (feats, n, diff)
+
+
+def test_fast_pure_engine_on_ideal_algorithms_and_readout_only_device():
+    ideal = DEVICES["ideal"]
+    for alg in all_algorithms():
+        prog = parse(alg["qasm"])
+        diff = np.max(np.abs(final_state(prog, ideal).psi - final_state_reference(prog, ideal).psi))
+        assert diff < 1e-12, (alg["name"], diff)
+    ro = Device("ro", 3, readout_error=[(0.01, 0.02)] * 3)
+    prog = parse("OPENQASM 2.0; qreg q[3]; creg c[3]; h q[0]; cx q[0],q[2]; swap q[1],q[2]; measure q -> c;")
+    assert np.max(np.abs(final_state(prog, ro).psi - final_state_reference(prog, ro).psi)) < 1e-12

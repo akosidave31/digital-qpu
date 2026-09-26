@@ -76,7 +76,16 @@ formula; cached small matrices. The original engine is kept as final_state_refer
 Targets (set before measuring): gate-error cost 9.3x -> < 3x; noisy Grover 0.73 s -> < 0.3 s;
 randomized benchmarking 12.8 s -> < 4 s; results identical to the reference (< 1e-12) and all
 tests + Qiskit checks unchanged.
-Result (phone): all targets met. Gate-error cost 0.4x no-noise; noisy Grover 0.037 s (19.8x);
-randomized benchmarking 0.32 s (39.5x); training 9.8x; noisy engine 11-14x at 2-8 qubits;
-test suite 3m23s -> 42s. 456 contractions per Grover run instead of 8,610. Identical results.
-New finding: the pure-state engine (no noise / crosstalk only) is now the slower path.
+Result: (pending)
+
+## v0.9.1 - fast pure-state engine
+
+Finding from v0.9.0: noise-free runs (pure-state engine) became the slower path.
+Change: pending 2x2 unitaries per qubit applied once; cz and ZZ as element-wise multiplications;
+swap as a free relabelling of axes; cx as a flip of the half of the state where the control is 1.
+Targets (set before measuring): ideal 20-qubit GHZ 1.05 s -> < 0.5 s; noise-free Grover
+0.039 s -> < 0.01 s; crosstalk-only Grover 0.086 s -> < 0.02 s; results identical to the
+reference (< 1e-12).
+Result (phone): ideal 20-qubit GHZ 0.351 s (3.3x) - met; noise-free Grover 0.009 s (4.6x) - met;
+crosstalk-only Grover 0.020 s (4.6x) - at the target (printed value rounded; within measurement noise);
+identical to the reference. Test suite 42 s -> 68 s from the new reference-engine equivalence tests.

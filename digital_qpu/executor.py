@@ -296,12 +296,103 @@ def _final_density_fast(layers, device, n):
     return NDensity(n, t.reshape(D, D))
 
 
+# ---------------- fast pure-state engine (v0.9.1) ----------------
+# Same idea for noise-free runs: pending 2x2 unitaries per qubit, applied once when needed;
+# cz and ZZ as element-wise multiplications; swap as a free relabelling of axes; cx as a flip of
+# the half of the state where the control is 1.
+def _matrix_cached(op):
+    return _cached(("u", op.name, op.params), lambda: _matrix_1q(op))
+
+
+def _sign_mask(a, b, n):
+    def make():
+        m = np.ones([2 if i in (a, b) else 1 for i in range(n)])
+        idx = [0] * n
+        idx[a], idx[b] = 1, 1
+        m[tuple(idx)] = -1.0
+        return m
+    return _cached(("czp", a, b, n), make)
+
+
+def _zz_phase(pairs, d, n):
+    def make():
+        E = np.zeros((2,) * n)
+        z = np.array([1.0, -1.0])
+        for (a, b), rate in pairs:
+            sa = [1] * n
+            sa[a] = 2
+            sb = [1] * n
+            sb[b] = 2
+            E = E + (rate * d / 2) * z.reshape(sa) * z.reshape(sb)
+        return np.exp(-0.5j * E)
+    return _cached(("zzp", tuple(pairs), d, n), make)
+
+
+def _cx_pure(psi, c, t, n):
+    psi = np.array(psi)                                  # own, contiguous copy
+    sel = [slice(None)] * n
+    sel[c] = 1
+    sub = psi[tuple(sel)]                                # view: control = 1
+    tt = t if t < c else t - 1
+    sub[...] = np.flip(sub, axis=tt).copy()
+    return psi
+
+
+def _final_pure_fast(layers, device, n):
+    psi = np.zeros((2,) * n, dtype=complex)
+    psi[(0,) * n] = 1.0
+    pend = [None] * n
+
+    def push(q, U):
+        pend[q] = U if pend[q] is None else U @ pend[q]
+
+    def flush(q):
+        nonlocal psi
+        if pend[q] is not None:
+            psi = np.moveaxis(np.tensordot(pend[q], psi, axes=([1], [q])), 0, q)
+            pend[q] = None
+
+    zz_pairs = device.zz_pairs(n)
+    zz_qubits = sorted({q for (a, b), _ in zz_pairs for q in (a, b)})
+    for layer in layers:
+        for op in layer:
+            if len(op.qubits) == 1:
+                q = op.qubits[0]
+                if op.name != "id":
+                    push(q, _matrix_cached(op))
+                if device.drive_crosstalk and op.name in _PULSE_ANGLE:
+                    ang = device.drive_crosstalk * _PULSE_ANGLE[op.name]
+                    U = _cached(("rxu", ang), lambda: rx(ang))
+                    for m in device.neighbours(q, n):
+                        push(m, U)
+            else:
+                a, b = op.qubits
+                flush(a)
+                flush(b)
+                if op.name == "cz":
+                    psi = psi * _sign_mask(a, b, n)
+                elif op.name == "swap":
+                    psi = np.swapaxes(psi, a, b)
+                elif op.name == "cx":
+                    psi = _cx_pure(psi, a, b, n)
+                else:
+                    raise QasmError(f"unsupported two-qubit gate {op.name}")
+        d = layer_duration(layer, device)
+        if d > 0 and zz_pairs:
+            for q in zz_qubits:
+                flush(q)
+            psi = psi * _zz_phase(zz_pairs, d, n)
+    for q in range(n):
+        flush(q)
+    return NQubit(n, np.ascontiguousarray(psi).reshape(-1))
+
+
 def final_state(program, device):
     """NQubit (no stochastic noise) or NDensity (decoherence and/or gate errors) after all gates."""
     layers = schedule(program, device)
     n = program.n_qubits
     if not device.needs_density:
-        return final_state_reference(program, device)
+        return _final_pure_fast(layers, device, n)
     if n > MAX_NOISY_QUBITS:
         raise QasmError(f"noisy simulation is limited to {MAX_NOISY_QUBITS} qubits (program has {n})")
     return _final_density_fast(layers, device, n)
