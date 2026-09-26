@@ -72,6 +72,20 @@ The same computations run on real quantum hardware, as OpenQASM programs in
 
 Same computation, not the same speed: this is a classical simulation (see the top of this README).
 
+Three versions of Grover (v0.20.0), from the research in EXPERIMENTS.md (v0.16.0-v0.19.0):
+
+| version | perfect machine | noisy dq-5 (unseen days, mean of 8 items) | two-qubit gates on dq-5 |
+|---|---|---|---|
+| `standard`: textbook, 2 rounds | 94.5% | 35.6% | 48 |
+| `exact`: Long's phase (about 2.13 instead of pi), 2 rounds | 100% | 36.9% | 48 |
+| `1round`: textbook, 1 round | 78.1% | 43.9% | 24 |
+
+    digital-qpu algorithms --grover all     # all three side by side, ideal and noisy
+    python -c "from digital_qpu import grover_variant; print(grover_variant('exact')['qasm'])" > exact.qasm
+
+The most accurate algorithm is not the best one on a noisy chip: fewer two-qubit gates win.
+The web API lists all ready-made circuits with their OpenQASM at `GET /algorithms`.
+
 ## Error mitigation
 
     digital-qpu run examples/ghz5.qasm --mitigate readout    # counts + readout-mitigated result
@@ -233,6 +247,7 @@ ignores which qubits have the lowest error today.
     v0.17.0: trained on all 8 marked items at once, with a permanent memorisation check)
 16. Trainable oracle/diffusion phases: tests Long's exact (100%) Grover (v0.18.0)
 17. Exact Grover at standard cost: 6-CNOT adjustable phase gate (v0.19.0)
+18. Grover versions usable everywhere: `--grover`, `grover_variant()`, `GET /algorithms` (v0.20.0)
 
 See EXPERIMENTS.md for investigations and the decisions they led to.
 

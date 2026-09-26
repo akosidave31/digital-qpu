@@ -6,7 +6,7 @@
                   python -m digital_qpu calibration [--device dq-5] --day N (that day's data sheet)
                   python -m digital_qpu history [--device dq-5] --qubit Q --days N
                   python -m digital_qpu benchmark [--device dq-5] [--day N] [--shots 4000]
-                  python -m digital_qpu algorithms [--device dq-5] [--shots 2000]   (famous quantum algorithms)
+                  python -m digital_qpu algorithms [--device dq-5] [--shots 2000] [--grover standard|exact|1round|all]
                   python -m digital_qpu shor [--shots 2000]                         (factor 15, step by step)
                   python -m digital_qpu speed [--quick] [--save FILE.json] [--compare FILE.json]
                   python -m digital_qpu routing                                     (basic vs look-ahead router)
@@ -97,6 +97,8 @@ def main(argv=None):
     al.add_argument("--seed", type=int, default=1)
     al.add_argument("--trajectories", type=int, default=300)
     al.add_argument("--router", choices=ROUTERS, default="auto")
+    al.add_argument("--grover", choices=["standard", "exact", "1round", "all"], default="standard",
+                    help="which Grover version(s): textbook, exact (Long's phase) or 1 round (best on noisy chips)")
     sh = sub.add_parser("shor", help="Shor's algorithm factoring 15, step by step")
     sh.add_argument("--shots", type=int, default=2000)
     sh.add_argument("--seed", type=int, default=1)
@@ -181,7 +183,7 @@ def main(argv=None):
     if a.cmd == "algorithms":
         from .algorithms import all_algorithms
         dev = calibrate(get_device(a.device), a.day)
-        for alg in all_algorithms():
+        for alg in all_algorithms(grover=a.grover):
             ideal = QPU("ideal").run(alg["qasm"], shots=a.shots, seed=a.seed).result()["counts"]
             ai, si = alg["answer"](ideal), alg["success"](ideal)
             line = f"   expected {alg['expected']} | ideal {ai} ({si * 100:.0f}%) {'OK' if ai == alg['expected'] else 'WRONG'}"

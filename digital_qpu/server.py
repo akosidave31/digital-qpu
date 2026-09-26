@@ -5,6 +5,7 @@
 Endpoints (JSON in, JSON out):
     GET  /               service info
     GET  /devices        the available chips
+    GET  /algorithms     ready-made circuits (famous algorithms, 3 Grover versions) with their OpenQASM
     POST /jobs           submit {"qasm": "...", "device": "dq-5", "shots": 1024, ...} -> 202 {"job_id", ...}
     GET  /jobs           recent jobs, newest first (without results)
     GET  /jobs/<id>      a job's status, and its result when DONE
@@ -156,6 +157,7 @@ class Service:
 
 
 ENDPOINTS = {"GET /": "service info", "GET /devices": "available chips",
+             "GET /algorithms": "ready-made circuits (incl. 3 Grover versions) with their OpenQASM",
              "POST /jobs": "submit a job: {qasm, device, shots, seed, day, mitigate, router, trajectories}",
              "GET /jobs": "recent jobs, newest first", "GET /jobs/<id>": "status and result"}
 
@@ -189,6 +191,11 @@ def make_handler(service):
             if path == "/devices":
                 return self._send(200, {"devices": [{"name": d.name, "n_qubits": d.n_qubits,
                                                      "description": d.description} for d in DEVICES.values()]})
+            if path == "/algorithms":
+                from .algorithms import all_algorithms
+                return self._send(200, {"algorithms": [
+                    {"name": x["name"], "task": x["task"], "qubits": x["qubits"], "expected": x["expected"],
+                     "qasm": x["qasm"]} for x in all_algorithms("all")]})
             if path == "/jobs":
                 return self._send(200, {"jobs": service.recent()})
             if path.startswith("/jobs/"):

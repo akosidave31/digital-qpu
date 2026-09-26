@@ -366,3 +366,17 @@ but by less than the naive estimate; (3) noise-aware phase training adds about +
 (4) nothing with 2 rounds (48 two-qubit gates) comes close to 1 round (24): on this chip the gate count
 still dominates. Across v0.16-v0.19: exact beats standard only once its cost is equal; halving the
 circuit beats both.
+
+## v0.20.0 - the Grover findings made usable
+
+Change: grover_variant("standard" | "exact" | "1round"), exact_grover_phase(); `digital-qpu algorithms
+--grover standard|exact|1round|all`; web API GET /algorithms (ready-made circuits with OpenQASM). The
+textbook version stays the default. The exact version uses the 6-CNOT phase gate of v0.19.0, rewritten in
+algorithms.py with standard u1 gates (tests: 100% for all 8 marked items, same two-qubit count as standard).
+Targets (set before running): tests pass; `algorithms --device dq-5 --grover all` (2000 shots, seed 1):
+1round shows the highest noisy success of the three versions, as the research predicts. Reported, not a
+target: the order of exact vs standard (1.3 points apart, close to the sampling noise of 2000 shots).
+Result (phone): tests pass (295 passed, 2 slow skipped) - met. `algorithms --grover all` (dq-5 nominal,
+2000 shots, seed 1): standard ideal 94% / dq-5 37%; exact ideal 100% / dq-5 38%; 1round ideal 78% / dq-5 44%.
+1round has the highest noisy success - met. Reported: exact above standard (38% vs 37%), same order as the
+exact unseen-day means of v0.19.0.

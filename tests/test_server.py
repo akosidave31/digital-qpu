@@ -141,3 +141,12 @@ def test_old_finished_jobs_are_dropped(monkeypatch):
         assert len(s.jobs) <= 3 and s.get(ids[0]) is None
     finally:
         s.stop()
+
+
+def test_algorithms_endpoint_lists_ready_made_circuits(base):
+    code, d = call(base, "/algorithms")
+    names = [x["name"] for x in d["algorithms"]]
+    assert code == 200 and "Grover search (3 qubits, exact)" in names and "Grover search (3 qubits, 1 round)" in names
+    exact = next(x for x in d["algorithms"] if x["name"].endswith("exact)"))
+    job = wait(base, call(base, "/jobs", {"qasm": exact["qasm"], "device": "ideal", "shots": 300, "seed": 1})[1]["job_id"])
+    assert job["status"] == "DONE" and job["result"]["counts"] == {exact["expected"]: 300}

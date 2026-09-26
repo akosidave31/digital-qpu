@@ -3,7 +3,7 @@ They are the same computations run on real quantum hardware; here they run on th
 3-qubit gates (Toffoli, controlled-swap, controlled-phase) are written out in their standard
 textbook decompositions into 1- and 2-qubit gates, as compilers do for real devices."""
 from fractions import Fraction
-from math import gcd, pi
+from math import gcd, pi, asin, sin, sqrt
 
 HEAD = 'OPENQASM 2.0;\ninclude "qelib1.inc";'
 
@@ -83,15 +83,39 @@ def deutsch_jozsa(kind="balanced", n=3):
             "expected": kind, "answer": verdict, "success": ok}
 
 
-def grover3(marked=0b101, iterations=2):
+def exact_grover_phase(iterations=2, n_items=8):
+    """Long (2001): oracle and diffusion phase that makes Grover find the item with certainty in
+    `iterations` rounds; None if that many rounds cannot reach 100%. For 8 items and 2 rounds: about 2.13."""
+    beta = asin(1 / sqrt(n_items))
+    x = sin(pi / (4 * iterations + 2)) / sin(beta)
+    return 2 * asin(x) if x <= 1 else None
+
+
+def _ccp6(lam, a, b, c):
+    """Doubly-controlled phase e^{i lam} on |111>: the 6-CNOT CCZ circuit with T -> u1(lam/4), Tdg -> u1(-lam/4).
+    Exact for any lam (the phases add up to lam*(a+b+c-a^b-a^c-b^c+a^b^c)/4 = lam*abc); at lam = pi it is CCZ."""
+    q = lam / 4
+    return [f"cx q[{b}],q[{c}];", f"u1({-q!r}) q[{c}];", f"cx q[{a}],q[{c}];", f"u1({q!r}) q[{c}];",
+            f"cx q[{b}],q[{c}];", f"u1({-q!r}) q[{c}];", f"cx q[{a}],q[{c}];", f"u1({q!r}) q[{b}];",
+            f"u1({q!r}) q[{c}];", f"cx q[{a}],q[{b}];", f"u1({q!r}) q[{a}];", f"u1({-q!r}) q[{b}];",
+            f"cx q[{a}],q[{b}];"]
+
+
+def grover3(marked=0b101, iterations=2, phase=None):
+    """3-qubit Grover. phase=None: the textbook algorithm (CCZ, phase pi). phase=lam: every oracle call and
+    diffusion applies phase lam instead (same 6-CNOT cost); lam = exact_grover_phase(2) gives certainty."""
+    ccz = _ccz(0, 1, 2) if phase is None else _ccp6(phase, 0, 1, 2)
     flips = [f"x q[{i}];" for i in range(3) if not marked >> i & 1]
-    oracle = flips + _ccz(0, 1, 2) + flips
-    diffusion = [f"h q[{i}];" for i in range(3)] + [f"x q[{i}];" for i in range(3)] + _ccz(0, 1, 2) + \
+    oracle = flips + ccz + flips
+    diffusion = [f"h q[{i}];" for i in range(3)] + [f"x q[{i}];" for i in range(3)] + ccz + \
                 [f"x q[{i}];" for i in range(3)] + [f"h q[{i}];" for i in range(3)]
     body = [f"h q[{i}];" for i in range(3)] + (oracle + diffusion) * iterations
     key = format(marked, "03b")
+    steps = f"{iterations} step" + ("s" if iterations != 1 else "")
+    task = (f"find 1 marked item among 8 in {steps} (classical: up to 8 checks)" if phase is None else
+            f"find 1 marked item among 8 in {steps}, phase {phase:.3f} instead of pi (certainty on a perfect machine)")
     return {"name": "Grover search (3 qubits)", "qubits": 3,
-            "task": "find 1 marked item among 8 in 2 steps (classical: up to 8 checks)",
+            "task": task,
             "qasm": _program(3, 3, body, [(i, i) for i in range(3)]),
             "expected": key, "answer": _top,
             "success": lambda c: c.get(key, 0) / sum(c.values())}
@@ -155,9 +179,31 @@ def shor15():
             "success": lambda c: (c.get("0100", 0) + c.get("1100", 0)) / sum(c.values())}
 
 
-def all_algorithms():
-    return [bernstein_vazirani(), deutsch_jozsa("balanced"), deutsch_jozsa("constant"),
-            grover3(), phase_estimation(), shor15()]
+GROVER_VARIANTS = ("standard", "exact", "1round")
+
+
+def grover_variant(variant="standard", marked=0b101):
+    """The Grover versions compared in EXPERIMENTS.md (v0.16.0-v0.19.0):
+    standard: textbook, 2 rounds (94.5% on a perfect machine); exact: Long's phase, 2 rounds, same gate
+    count (100%); 1round: textbook, 1 round (78.1% on a perfect machine, but the best on the noisy dq-5)."""
+    if variant == "standard":
+        return grover3(marked, 2)
+    if variant == "exact":
+        alg = grover3(marked, 2, phase=exact_grover_phase(2))
+        alg["name"] = "Grover search (3 qubits, exact)"
+        return alg
+    if variant == "1round":
+        alg = grover3(marked, 1)
+        alg["name"] = "Grover search (3 qubits, 1 round)"
+        return alg
+    raise ValueError(f"Grover variant must be one of {GROVER_VARIANTS}")
+
+
+def all_algorithms(grover="standard"):
+    """grover: 'standard' (default), 'exact', '1round' or 'all' (all three Grover versions)."""
+    variants = GROVER_VARIANTS if grover == "all" else (grover,)
+    return [bernstein_vazirani(), deutsch_jozsa("balanced"), deutsch_jozsa("constant")] + \
+           [grover_variant(v) for v in variants] + [phase_estimation(), shor15()]
 
 
 FILES = {"bernstein_vazirani.qasm": bernstein_vazirani, "deutsch_jozsa_balanced.qasm": lambda: deutsch_jozsa("balanced"),
