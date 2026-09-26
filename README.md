@@ -29,6 +29,30 @@ Python:
 
 Results use Qiskit's bit order: classical bit 0 is the rightmost character.
 
+## Web API
+
+Submit jobs over HTTP, like a quantum cloud service (standard library only, runs fine in Termux):
+
+    digital-qpu serve                       # http://127.0.0.1:8000, this device only
+    digital-qpu serve --host 0.0.0.0        # reachable from your network (no authentication!)
+
+    curl -s localhost:8000/devices
+    curl -s -X POST localhost:8000/jobs -d '{"qasm": "OPENQASM 2.0; qreg q[2]; creg c[2]; h q[0]; cx q[0], q[1]; measure q -> c;", "device": "dq-5", "shots": 1000}'
+    curl -s localhost:8000/jobs/<job_id>    # status QUEUED -> RUNNING -> DONE, then the result
+
+| Endpoint | What it does |
+|---|---|
+| `GET /` | service info and endpoints |
+| `GET /devices` | available chips |
+| `POST /jobs` | submit `{qasm, device, shots, seed, day, mitigate, router, trajectories}`; answers 202 with a job id |
+| `GET /jobs` | recent jobs, newest first |
+| `GET /jobs/<id>` | status, and the result when done |
+
+Bad requests (invalid program, unknown device, too many shots, ...) are rejected immediately with
+400 and the reason. Jobs run one at a time in the background, so the server keeps answering while a
+job runs; at most 50 jobs wait in the queue (429 when full). No authentication yet: use it on this
+device or a trusted network.
+
 ## Famous quantum algorithms
 
 The same computations run on real quantum hardware, as OpenQASM programs in
@@ -96,6 +120,7 @@ feature, real workloads, and a profile of the most expensive functions.
 | `mitigation.py` | benchmark suite with exactly known answers; readout-error mitigation (undo the day's readout errors); distance-to-truth metrics |
 | `rb.py` | randomized benchmarking: measures the device's error per gate, like a real lab |
 | `qpu.py` | jobs: submit a program, get a job id, status and result |
+| `server.py` | web API: the same jobs over HTTP, with a background worker and input checks |
 
 Devices: `ideal` (20 qubits, no noise), `dq-5` (5 noisy qubits in a line q0-q1-q2-q3-q4) and
 `dq-12` (12 noisy qubits in a ladder: two rows of 6 with rungs between them).
@@ -193,7 +218,7 @@ ignores which qubits have the lowest error today.
 10. Smarter routing: better initial placement + look-ahead SWAP choice (v0.11.0)
 11. Late start scheduling: qubits stay in |0> until needed, like ALAP on real devices (v0.12.0)
 12. Reduce learned mitigation's harm: conservative correction (v0.13.0)
-13. Web API: submit jobs over HTTP, like a quantum cloud service
+13. Web API: submit jobs over HTTP, like a quantum cloud service (v0.14.0)
 14. App on top of the API
 
 See EXPERIMENTS.md for investigations and the decisions they led to.

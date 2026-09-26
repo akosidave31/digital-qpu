@@ -200,3 +200,15 @@ Result (phone, `benchmark --runs 10`): tests pass (149 passed, 2 slow skipped) -
 of circuit-runs - met (exactly at the limit); MLP mean 0.023 -> 0.024 +/- 0.001 - met (<= 0.025); MLP
 worst harm +0.020 -> +0.014 - met. Linear also safer: harm 9% -> 5%, worst +0.018 -> +0.012 (mean
 0.025 -> 0.027). MLP still better than linear by more than 2 error bars (+0.0027 +/- 0.0005).
+
+## v0.14.0 - web API
+
+Change: `digital-qpu serve` - HTTP API (standard library only): POST /jobs, GET /jobs/<id>, GET /jobs,
+GET /devices. Submissions are validated immediately (400 with the reason); jobs run one at a time in a
+background worker; queue limit 50 (429); finished jobs kept up to 500. Built for Termux first; the
+same code can later run on a cloud host.
+Targets (set before measuring, on the phone): all tests pass; a noisy Bell job on dq-5 (1000 shots)
+goes from submission to DONE in < 2 s; while noisy Shor runs on dq-12, GET /devices answers in < 0.5 s.
+Result (phone): tests pass (171 passed, 2 slow skipped) - met. Noisy Bell on dq-5, 1000 shots,
+submission to DONE: 0.121 s - met (< 2 s; counts 11: 471, 00: 470, 01: 36, 10: 23). GET /devices while
+noisy Shor ran on dq-12 (status RUNNING): 0.009 s - met (< 0.5 s).

@@ -10,6 +10,7 @@
                   python -m digital_qpu shor [--shots 2000]                         (factor 15, step by step)
                   python -m digital_qpu speed [--quick] [--save FILE.json] [--compare FILE.json]
                   python -m digital_qpu routing                                     (basic vs look-ahead router)
+                  python -m digital_qpu serve [--host 127.0.0.1] [--port 8000]      (web API: submit jobs over HTTP)
                   run / compile / rb / zz also take --day N; run also takes --mitigate readout|learned|learned-linear
                   run / compile / algorithms / shor also take --router auto|lookahead|basic"""
 import argparse
@@ -67,6 +68,9 @@ def main(argv=None):
     cp.add_argument("--device", default="dq-5")
     cp.add_argument("--day", type=int, default=None)
     cp.add_argument("--router", choices=ROUTERS, default="auto")
+    sv = sub.add_parser("serve", help="web API: submit jobs over HTTP (see digital_qpu/server.py)")
+    sv.add_argument("--host", default="127.0.0.1", help="127.0.0.1 = this device only; 0.0.0.0 = your network")
+    sv.add_argument("--port", type=int, default=8000)
     ro = sub.add_parser("routing", help="compare the basic and look-ahead routers on the algorithms")
     ro.add_argument("--devices", nargs="+", default=["dq-5", "dq-12"])
     b = sub.add_parser("rb", help="randomized benchmarking: measure error per gate")
@@ -279,6 +283,10 @@ def main(argv=None):
         print(f"error per Clifford  {res['epc']:.2e}")
         print(f"error per gate      {res['epg']:.2e}   (built-in expectation {res['predicted_epg']:.2e})")
         print(f"free 3-parameter fit would give {res['epg_free']:.2e} (B = {res['B_free']:.3f}; unreliable with short sequences)")
+        return 0
+    if a.cmd == "serve":
+        from .server import serve
+        serve(a.host, a.port)
         return 0
     if a.cmd == "devices":
         for d in DEVICES.values():
