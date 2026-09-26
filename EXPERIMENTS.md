@@ -279,4 +279,20 @@ dq-5 (training calibration): best valid trained mean >= fixed Grover mean + 0.03
 dq-5-trained circuit minus the BETTER fixed Grover (1 or 2 rounds, whichever averages higher) >= +0.02.
 Also reported, not a target: does fixed Grover with 1 round still beat 2 rounds on the noisy chip when
 averaged over all 8 marked items (replication of the v0.16.0 finding)?
-Result: (pending)
+Result (phone, Termux, 40 epochs, ~45 min): tests pass (9/9). Memorisation check passed for all four
+trained circuits (ideal spread 0.059, 0.074, 0.000, 0.029 - all <= 0.10), so every result below counts.
+- ideal: fixed Grover mean 0.9453 -> 0.9585 (2 rounds; +1.3 points) - target 0.97 MISSED (still rising at
+  epoch 40). 1 round: 0.7812 -> 0.7812, no gain (Grover's 1-round angles already optimal in this circuit).
+- dq-5 (training calibration): the script reports MET (0.3854 -> 0.4684), but this target compared against
+  2-round fixed Grover. Most of that gain comes from using 1 round, not from training: fixed 1-round Grover
+  scores 0.4574 there. Fair comparison: 2 rounds 0.3854 -> 0.3978 (+1.2), 1 round 0.4574 -> 0.4684 (+1.1).
+  Lesson: the target should have compared with the best fixed circuit, as the unseen-days target did.
+- unseen days (10), mean over all 8 marked items: fixed 2 rounds 0.3555, fixed 1 round 0.4386;
+  dq-5-trained 2 rounds 0.3667 (+1.1 vs its fixed), 1 round 0.4497; ideal-trained 2 rounds 0.3573 (+0.2).
+  Best trained minus best fixed = +0.0111 +/- 0.0002, better on 10/10 days - target +0.02 MISSED, but the
+  gain is small and very consistent.
+Conclusions: (1) honest training (no memorisation possible) gives a real but modest gain, about +1 point,
+on every unseen day; (2) it is noise-aware: angles trained on the ideal chip give almost nothing on dq-5
+(+0.2), angles trained on dq-5 give +1.1; (3) confirmed with all 8 marked items: on the noisy chip fixed
+Grover with 1 round beats 2 rounds by 8.3 points (0.4386 vs 0.3555) - circuit length matters far more
+than tuning angles.
