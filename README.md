@@ -70,6 +70,10 @@ answer: readout 0.050, linear 0.035, MLP 0.032 (floor 0.009). The MLP is better 
 makes a result worse than readout alone more often (12% vs 6% of circuit-runs; worst +0.032 vs
 +0.009). Use `learned-linear` when avoiding occasional bad corrections matters more.
 
+Since v0.13.0 the correction is conservative: only 80% of the predicted correction is applied,
+because the model's estimate is imprecise and over-correcting hurts more than under-correcting.
+The 80% was chosen on fresh random circuits, not on the benchmark (see EXPERIMENTS.md).
+
 ## Speed
 
     digital-qpu speed --save baseline.json          # where does the time go? (measurement only)
@@ -188,7 +192,7 @@ ignores which qubits have the lowest error today.
 9. Capacity: trajectory engine (up to 16 noisy qubits), 12-qubit ladder chip dq-12, noisy Shor (v0.10.0)
 10. Smarter routing: better initial placement + look-ahead SWAP choice (v0.11.0)
 11. Late start scheduling: qubits stay in |0> until needed, like ALAP on real devices (v0.12.0)
-12. Reduce learned mitigation's harm
+12. Reduce learned mitigation's harm: conservative correction (v0.13.0)
 13. Web API: submit jobs over HTTP, like a quantum cloud service
 14. App on top of the API
 

@@ -165,3 +165,38 @@ Result (phone): tests pass (148 passed, 2 slow skipped) - met. Shor on dq-12: us
 Bit-1 errors (y = 2, 6, 10, 14) 536 -> 254 shots. Circuit time unchanged (19.62) - met. Grover on
 dq-5 37% - met (unchanged). Next lead: y = 0 and 8 now exceed y = 4 and 12 (456/375 vs 325/318 shots),
 i.e. errors on output bit 2 - a different counting qubit; to investigate the same way.
+
+Follow-up (after v0.12.0, exact probabilities, Shor on dq-12): the remaining excess of y = 0 and 8 over
+y = 4 and 12 (imbalance +9.7 points) comes mostly from T1/T2 (+16.0 alone; gates +6.5, drive +7.3,
+readout +1.9, ZZ -0.6). Per physical qubit it is T1-dominated and spread over q0-q4 (+2 to +9 each,
+q5-q7 zero), where the work register sits. Shor's work register must hold |1>s (1, 7, 4, 13), which
+decay with T1 whether busy or not (~e^(-20/50) = 67% kept over the circuit). Conclusion: mostly
+physics, not a software flaw; calibration-aware placement could gain perhaps 1-2 points (T1 only
+varies 45-55). Not pursued now.
+
+## v0.13.0 - conservative learned mitigation
+
+Baseline (v0.12.0, `benchmark --runs 10`, distance to the exact answer): readout 0.037, linear 0.025,
+MLP 0.023 +/- 0.001, floor 0.009. MLP worse than readout alone in 11% of circuit-runs (by 0.009 on
+average when worse; worst +0.020).
+Investigation:
+- Harm per circuit: almost all of it is random2 (harmed on 10 of 10 days, 0.028 vs 0.018), the circuit
+  with the least room above the floor (0.005); random4 on 2 of 10 days (+0.003); all others never.
+- "Harm happens when the ideal answer is close to uniform" - rejected (random4 is the most uniform and
+  barely harmed; bell is similar to random2 and never harmed).
+- Best-possible f (fitted with the true answer) vs predicted f, exact, nominal dq-5: for random2 the
+  blur model fits (best f 0.985 improves 0.015 -> 0.011) but the MLP predicts 0.951 and over-corrects
+  (0.023). Predictions are compressed (0.93-0.97 for all circuits; true 0.93-0.99), and over-correcting
+  costs more than under-correcting (clipped negative probabilities).
+- Correction fraction s (f_used = 1 - s (1 - f)) on 60 FRESH random circuits (seed 2000, not training,
+  not benchmark), mean change vs readout / harmed / worst: s=1.0 -0.0358 / 7% / +0.017;
+  0.8 -0.0324 / 2% / +0.012; 0.6 -0.0263 / 2% / +0.008; 0.4 -0.0186 / 2% / +0.003; 0.2 -0.0098 / 0% / +0.001.
+Change: s = 0.8 (keeps ~90% of the gain, harm 7% -> 2% on fresh circuits); LearnedMitigator(kind,
+shrink=...) still allows 1.0 (old behaviour).
+Targets (set before measuring, `benchmark --runs 10`): all tests pass; MLP harm rate <= 5% (was 11%);
+MLP mean <= 0.025 (was 0.023; allows ~10% of the gain given up plus one error bar); MLP worst harm
+< +0.020.
+Result (phone, `benchmark --runs 10`): tests pass (149 passed, 2 slow skipped) - met. MLP harm 11% -> 5%
+of circuit-runs - met (exactly at the limit); MLP mean 0.023 -> 0.024 +/- 0.001 - met (<= 0.025); MLP
+worst harm +0.020 -> +0.014 - met. Linear also safer: harm 9% -> 5%, worst +0.018 -> +0.012 (mean
+0.025 -> 0.027). MLP still better than linear by more than 2 error bars (+0.0027 +/- 0.0005).

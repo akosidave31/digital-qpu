@@ -4,6 +4,10 @@ After readout mitigation, the remaining noise mostly blurs a result toward the u
 where f (the surviving signal) depends on the circuit. A model predicts f from the circuit's error
 budget (2-qubit and 1-qubit gate errors, decoherence exposure, ZZ exposure, measured qubits), taken
 from the compiled program and the day's calibration; the blur is then undone.
+Correction is deliberately conservative (v0.13.0): only a fraction SHRINK = 0.8 of the predicted
+correction is applied, f_used = 1 - 0.8 * (1 - f). The model's f is imprecise, and over-correcting
+(f too low) hurts more than under-correcting; 0.8 was chosen on fresh random circuits (not the
+benchmark) as keeping ~90% of the average gain while cutting harm from 7% to 2%.
 Two models: "mlp" (digital_qubit's MLP; default since v0.7.1: best on average) and "linear" (-log f
 linear in the budget; interpretable, lower risk of making a result worse). See EXPERIMENTS.md.
 Training circuits use a different random seed family than the benchmark suite."""
@@ -17,6 +21,7 @@ from .compiler import transpile
 from .mitigation import readout_mitigate
 
 F_MIN = 0.05
+SHRINK = 0.8
 FEATURES = ["2q gate error", "1q gate error", "decoherence", "ZZ exposure", "measured qubits"]
 
 
@@ -99,10 +104,13 @@ def training_data(device, n_circuits=120, seed=1000):
 
 
 class LearnedMitigator:
-    def __init__(self, kind="linear"):
+    def __init__(self, kind="linear", shrink=SHRINK):
+        """shrink: fraction of the predicted correction to apply (1 = full, as before v0.13.0; 0 = none)."""
         if kind not in ("linear", "mlp"):
             raise ValueError("kind must be 'linear' or 'mlp'")
-        self.kind = kind
+        if not 0.0 <= shrink <= 1.0:
+            raise ValueError("shrink must be between 0 and 1")
+        self.kind, self.shrink = kind, shrink
 
     def fit(self, X, y, seed=0):
         if self.kind == "linear":
@@ -129,6 +137,7 @@ class LearnedMitigator:
 
     def mitigate(self, dist_after_readout, native, device, clbit_qubits, n_clbits):
         f = float(self.predict_f(circuit_features(native, device))[0])
+        f = 1.0 - self.shrink * (1.0 - f)
         return undo_blur(dist_after_readout, f, clbit_qubits, n_clbits)
 
 

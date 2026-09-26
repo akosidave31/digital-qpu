@@ -69,3 +69,23 @@ def test_qpu_learned_mitigation():
 def test_linear_option_still_available():
     r = QPU("dq-5").run(open("examples/bell.qasm").read(), shots=1000, seed=5, mitigate="learned-linear").result()
     assert abs(sum(r["mitigated"].values()) - 1) < 1e-9
+
+
+def test_shrink_scales_the_correction(mitigators):
+    from digital_qpu.learned import SHRINK
+    assert SHRINK == 0.8 and LearnedMitigator("mlp").shrink == 0.8
+    native = transpile(parse(open("examples/ghz5.qasm").read()), DQ5)[0]
+    cq = {c: q for q, c in native.measures.items()}
+    dist = {"00000": 0.45, "11111": 0.43, "00001": 0.04, "10000": 0.04, "01110": 0.04}
+    m = mitigators["mlp"]
+    f = float(m.predict_f(circuit_features(native, DQ5))[0])
+    full, none_, part = (LearnedMitigator("mlp", s) for s in (1.0, 0.0, 0.8))
+    for x in (full, none_, part):
+        x.net, x.mu, x.sd = m.net, m.mu, m.sd
+    old, new = undo_blur(dist, f, cq, 5), full.mitigate(dist, native, DQ5, cq, 5)          # old behaviour
+    assert all(abs(old.get(k, 0) - new.get(k, 0)) < 1e-12 for k in set(old) | set(new))
+    assert all(abs(none_.mitigate(dist, native, DQ5, cq, 5)[k] - v) < 1e-12 for k, v in dist.items())
+    good = lambda r: r.get("00000", 0) + r.get("11111", 0)
+    assert good(dist) < good(part.mitigate(dist, native, DQ5, cq, 5)) < good(full.mitigate(dist, native, DQ5, cq, 5))
+    with pytest.raises(ValueError):
+        LearnedMitigator("mlp", 1.5)
