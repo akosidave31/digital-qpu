@@ -190,6 +190,13 @@ that happens to need fewer SWAPs. Compare them:
 
 Programs are placed on the smallest connected block of qubits 0..m-1 that fits them, so the
 simulated register stays small (Shor on dq-12 uses qubits 0-7).
+
+Noise-aware placement (v0.21.0, opt-in): `--router noise-aware` tries every connected group of
+physical qubits, compiles the circuit on each, and keeps the one with the best expected fidelity
+under that day's calibration (gate errors, readout, T1/T2) - like real compilers that use the
+device's calibration data to avoid weak qubits. See EXPERIMENTS.md for how much it helps.
+
+    digital-qpu run examples/algorithms/grover3.qasm --day 12 --router noise-aware
 Gate times: 0.02 (1-qubit), 0.15 (2-qubit). Error values use Qiskit Aer's depolarizing parameter.
 
 Measure it yourself, like a lab would:
@@ -248,6 +255,7 @@ ignores which qubits have the lowest error today.
 16. Trainable oracle/diffusion phases: tests Long's exact (100%) Grover (v0.18.0)
 17. Exact Grover at standard cost: 6-CNOT adjustable phase gate (v0.19.0)
 18. Grover versions usable everywhere: `--grover`, `grover_variant()`, `GET /algorithms` (v0.20.0)
+19. Noise-aware placement (`--router noise-aware`) + longer layer training (v0.21.0)
 
 See EXPERIMENTS.md for investigations and the decisions they led to.
 

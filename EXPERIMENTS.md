@@ -380,3 +380,24 @@ Result (phone): tests pass (295 passed, 2 slow skipped) - met. `algorithms --gro
 2000 shots, seed 1): standard ideal 94% / dq-5 37%; exact ideal 100% / dq-5 38%; 1round ideal 78% / dq-5 44%.
 1round has the highest noisy success - met. Reported: exact above standard (38% vs 37%), same order as the
 exact unseen-day means of v0.19.0.
+
+## v0.21.0 - follow-ups: noise-aware placement, and longer layer training
+
+A. Longer run of v0.17.0's joint layer training (phases fixed at pi) on the ideal chip: 150 epochs instead
+of 40 (v0.17.0: 0.9585, still rising). Target (set before running): best mean >= 0.97 with spread <= 0.10.
+
+B. Noise-aware placement (router="noise-aware", opt-in): for a k-qubit circuit, every connected group of k
+physical qubits is tried (the best 16 by a quick calibration score), each is routed with the look-ahead
+router and compiled, and the placement with the best expected fidelity is kept. The estimate is a
+heuristic from the day's calibration: log(1 - error) of every cz and pulse, readout error of measured
+qubits, and (duration x decoherence rate) of every used qubit. The auto router's placement is always a
+candidate. Test: on a chip with a terrible qubit 0 it moves GHZ away from it and scores > 10 points higher.
+Experiment (placement_experiment): dq-5, calibration days 0-59, every algorithm that fits (BV, DJ x2,
+Grover x3 versions, phase estimation), exact success with router auto vs noise-aware.
+Known bias against noise-aware: only physical qubits 0..(highest used) are simulated, so auto placements
+(lowest qubits) escape the crosstalk of the unused qubits above them, while a placement higher up
+simulates the idle qubits below it, including their always-on ZZ.
+Targets (set before running): tests pass; T1 all cases: mean change >= +0.5 points; T2 cases where the auto
+placement uses a bad-day (TLS) qubit, if >= 5 such cases: mean change >= +3 points; T3 worse by more than
+1 point in <= 10% of cases.
+Result: (pending)

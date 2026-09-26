@@ -27,7 +27,7 @@ from .device import get_device
 from .qasm import parse
 from .compiler import transpile, to_qasm
 
-ROUTERS = ["auto", "lookahead", "basic"]
+ROUTERS = ["auto", "lookahead", "basic", "noise-aware"]
 
 
 def routing_report(device_names):

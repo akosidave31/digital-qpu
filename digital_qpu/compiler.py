@@ -288,10 +288,127 @@ def route_lookahead(program, device):
     return Program(max(used) + 1, program.n_clbits, ops, measures), final, swaps, start
 
 
+ROUTERS = ("auto", "lookahead", "basic", "noise-aware")
+MAX_REGIONS = 16          # noise-aware: regions routed and scored (the best by a quick calibration score)
+
+
+def _connected_subsets(adj_full, k):
+    """All connected sets of k physical qubits, as sorted lists."""
+    frontier = {frozenset([q]) for q in adj_full}
+    for _ in range(k - 1):
+        frontier = {S | {v} for S in frontier for q in S for v in adj_full[q] if v not in S}
+    return sorted(sorted(S) for S in frontier)
+
+
+def _distances_n(adj, n):
+    """All-pairs hop distances inside adj (keys = physical qubits), as an n x n table."""
+    inf = 10 ** 9
+    dist = [[inf] * n for _ in range(n)]
+    for src in adj:
+        dist[src][src] = 0
+        dq = deque([src])
+        while dq:
+            u = dq.popleft()
+            for v in adj[u]:
+                if dist[src][v] == inf:
+                    dist[src][v] = dist[src][u] + 1
+                    dq.append(v)
+    return dist
+
+
+def _lookahead_in_region(program, region, adj_full, n):
+    """Look-ahead routing restricted to the physical qubits in `region` (same starts as route_lookahead)."""
+    k = program.n_qubits
+    R = set(region)
+    adj = {q: adj_full[q] & R for q in region}
+    dist = _distances_n(adj, n)
+    starts = [list(region[:k]), _greedy_layout(program, adj, dist)]
+    reverse = Program(k, program.n_clbits, list(reversed(program.ops)), program.measures)
+    for st in list(starts):
+        _, forward_end, _ = _route_with(program, adj, dist, st)
+        _, backward_end, _ = _route_with(reverse, adj, dist, forward_end)
+        starts.append(backward_end)
+    best = None
+    for st in starts:
+        ops, final, swaps = _route_with(program, adj, dist, st)
+        if best is None or swaps < best[2]:
+            best = (ops, final, swaps, st)
+    ops, final, swaps, start = best
+    measures = {final[q]: c for q, c in program.measures.items()}
+    used = [q for o in ops for q in o.qubits] + list(final) + list(measures)
+    return Program(max(used) + 1, program.n_clbits, ops, measures), final, swaps, start
+
+
+def _decoherence_rate(device, q):
+    rate = 0.0
+    if device.T1 is not None:
+        rate += 1 / (2 * device.T1[q])
+    if device.T_phi is not None:
+        rate += 1 / device.T_phi[q]
+    return rate
+
+
+def expected_log_fidelity(native, device):
+    """A quick estimate from the day's calibration (higher is better): gate errors of every pulse and cz,
+    readout error of every measured qubit, and decoherence of every used qubit over the circuit's
+    duration. A heuristic for choosing a placement, not a simulation."""
+    from .executor import schedule, layer_duration
+    log_f = 0.0
+    for o in native.ops:
+        if len(o.qubits) == 2:
+            log_f += np.log1p(-min(0.999, device.error_2q(*o.qubits)))
+        elif o.name in ("sx", "x"):
+            log_f += np.log1p(-min(0.999, device.error_1q(o.qubits[0])))
+    if device.readout_error is not None:
+        for q in native.measures:
+            p01, p10 = device.readout_error[q]
+            log_f += np.log1p(-min(0.999, (p01 + p10) / 2))
+    duration = float(sum(layer_duration(L, device) for L in schedule(native, device)))
+    used = {q for o in native.ops for q in o.qubits} | set(native.measures)
+    return log_f - duration * sum(_decoherence_rate(device, q) for q in used)
+
+
+def _region_quick_score(region, adj_full, device):
+    edges = [(a, b) for a in region for b in adj_full[a] if a < b and b in region]
+    s = sum(np.log1p(-min(0.999, device.error_2q(a, b))) for a, b in edges) / max(1, len(edges))
+    for q in region:
+        if device.readout_error is not None:
+            s += np.log1p(-min(0.999, sum(device.readout_error[q]) / 2))
+        s -= 10.0 * _decoherence_rate(device, q)
+    return s
+
+
+def route_noise_aware(program, device):
+    """v0.21.0: try every connected region of k physical qubits (the best MAX_REGIONS by a quick score),
+    route each with the look-ahead router, compile, and keep the placement with the best
+    expected_log_fidelity. The auto router's result is always one of the candidates.
+    Returns (Program, final layout, swaps, initial layout) or None when there is nothing to choose.
+    Note: a region far from qubit 0 makes the simulated register larger (physical qubits 0..max)."""
+    k = program.n_qubits
+    if device.coupling is None or k == 0 or k > device.n_qubits:
+        return None
+    adj_full = {q: set() for q in range(device.n_qubits)}
+    for a, b in device.coupling:
+        adj_full[a].add(b)
+        adj_full[b].add(a)
+    regions = _connected_subsets(adj_full, k)
+    regions.sort(key=lambda R: -_region_quick_score(R, adj_full, device))
+    candidates = [_lookahead_in_region(program, R, adj_full, device.n_qubits) for R in regions[:MAX_REGIONS]]
+    auto = _route_choice(program, device, "auto")
+    candidates.append((auto[0], auto[1], auto[2], auto[4]))
+    return max(candidates, key=lambda c: expected_log_fidelity(_native(c[0]), device))
+
+
 def _route_choice(program, device, router="auto"):
     """Returns (Program, final layout, swaps, router name, initial layout)."""
-    if router not in ("auto", "lookahead", "basic"):
-        raise ValueError("router must be 'auto', 'lookahead' or 'basic'")
+    if router not in ROUTERS:
+        raise ValueError("router must be 'auto', 'lookahead', 'basic' or 'noise-aware'")
+    if router == "noise-aware":
+        chosen = route_noise_aware(program, device)
+        if chosen is not None:
+            prog, final, swaps, start = chosen
+            return prog, final, swaps, "noise-aware", start
+        router = "auto"                                 # no wiring constraints or no calibration: nothing to choose
     if router != "basic":
         smart = route_lookahead(program, device)
         if smart is not None:
@@ -328,8 +445,19 @@ def _to_cz(op):
 
 
 def transpile(program, device, router="auto"):
-    """Full compile. Returns (native program, info dict). router: auto | lookahead | basic."""
+    """Full compile. Returns (native program, info dict). router: auto | lookahead | basic | noise-aware."""
     routed, layout, swaps, router_used, start = _route_choice(program, device, router)
+    native = _native(routed)
+    out = native.ops
+    info = {"swaps": swaps, "layout": layout, "initial_layout": start, "router": router_used, "n_ops": len(out),
+            "n_2q": sum(1 for o in out if len(o.qubits) == 2),
+            "n_sx": sum(1 for o in out if o.name in ("sx", "x")),
+            "n_rz": sum(1 for o in out if o.name == "rz")}
+    return native, info
+
+
+def _native(routed):
+    """Routed program -> native gates (cz + merged single-qubit gates with the fewest pulses)."""
     stream = []
     for op in routed.ops:
         stream += _to_cz(op) if len(op.qubits) == 2 else [op]
@@ -350,12 +478,7 @@ def transpile(program, device, router="auto"):
             out.append(op)
     for q in sorted(pending):
         flush(q)
-    native = Program(routed.n_qubits, routed.n_clbits, out, routed.measures)
-    info = {"swaps": swaps, "layout": layout, "initial_layout": start, "router": router_used, "n_ops": len(out),
-            "n_2q": sum(1 for o in out if len(o.qubits) == 2),
-            "n_sx": sum(1 for o in out if o.name in ("sx", "x")),
-            "n_rz": sum(1 for o in out if o.name == "rz")}
-    return native, info
+    return Program(routed.n_qubits, routed.n_clbits, out, routed.measures)
 
 
 def to_qasm(program):

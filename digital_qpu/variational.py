@@ -562,3 +562,19 @@ def summarize_cheap(out, train_device="dq-5"):
     lines.append(f"reported: best circuit on unseen days overall: {max(T[next(iter(T))], key=mean)} "
                  f"({max(mean(k) for k in next(iter(T.values()))):.4f})")
     return lines
+
+
+def longer_layers_run(epochs=150, lr=0.05, log=print):
+    """v0.21.0 follow-up of v0.17.0: joint training of the single-qubit layers (phases fixed at pi) on the
+    ideal chip for longer - v0.17.0 stopped at 0.9585 after 40 epochs while still rising."""
+    jg, ideal = JointGrover(rounds=2), get_device("ideal")
+    t0 = time.time()
+    best, hist = jg.train(ideal, jg.grover_init(), epochs=epochs, lr=lr,
+                          log=lambda t, s: log(f"   epoch {t:3d}  mean success {s:.4f}") if t % 10 == 0 else None)
+    items, spread = per_item_spread(best, 2)
+    out = {"epochs": epochs, "best": max(hist), "history": hist, "ideal_per_item": items, "spread": spread,
+           "seconds": time.time() - t0}
+    log(f"best mean {max(hist):.4f} | per item {' '.join(f'{v:.2f}' for v in items)} spread {spread:.3f}  "
+        f"target >= 0.97 with spread <= {SPREAD_LIMIT}: "
+        f"{'MET' if max(hist) >= 0.97 and spread <= SPREAD_LIMIT else 'MISSED'}  ({time.time() - t0:.0f} s)")
+    return out

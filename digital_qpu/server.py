@@ -33,7 +33,7 @@ MAX_SHOTS = 100_000
 MAX_TRAJECTORIES = 2000
 MAX_QUEUE = 50              # jobs waiting to run
 MAX_KEEP = 500              # finished jobs kept in memory (oldest dropped first)
-ROUTERS = ("auto", "lookahead", "basic")
+ROUTERS = ("auto", "lookahead", "basic", "noise-aware")
 MITIGATIONS = (None, "readout", "learned", "learned-linear")
 FIELDS = {"qasm", "device", "shots", "seed", "day", "mitigate", "router", "trajectories"}
 
