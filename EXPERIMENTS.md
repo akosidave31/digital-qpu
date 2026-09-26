@@ -350,4 +350,19 @@ Targets (set before running): tests pass; T1 two-qubit gates after compiling for
 <= standard 2-round Grover; T2 unseen days: exact6 minus standard (both 2 rounds) >= +0.01; T3 unseen days:
 best valid trained circuit minus best untrained circuit (any form, 1 or 2 rounds) >= +0.02.
 Also reported: the best circuit overall on unseen days (1-round standard Grover led so far with 0.4386).
-Result: (pending)
+Result (phone, Termux, ~50 min): memorisation check passed (spread 0.000 for both trained runs).
+- Ideal chip: exact Grover 1.0000 in both forms (6- and 8-CNOT); standard 2 rounds 0.9453.
+- T1 MET: two-qubit gates after compiling for dq-5 (marked 101): exact 6-CNOT form 48 = standard 2 rounds 48
+  (8-CNOT form 53; standard 1 round 24).
+- T2 MET: unseen days, exact6 minus standard (both 2 rounds) = +0.0131 +/- 0.0011, better on 10/10 days
+  (0.3686 vs 0.3555). About 65% of the naive +2.0-point estimate.
+- T3 MISSED: best trained (6-CNOT phases trained on dq-5, 1 round, 0.4371) minus best untrained (standard
+  1 round, 0.4386) = -0.0015 +/- 0.0002. Trained 2 rounds: 0.3769 (+2.1 vs standard 2 rounds, +0.8 vs
+  untrained exact6) - the best 2-round circuit so far.
+- Best circuit on unseen days overall: still standard Grover with 1 round, 0.4386.
+Conclusions: (1) the 6-CNOT phase gate is exact and costs exactly what standard Grover costs, so the
+compiler fix works; (2) at equal cost, exact Grover now beats standard Grover on the noisy chip, reliably
+but by less than the naive estimate; (3) noise-aware phase training adds about +0.8 more for 2 rounds;
+(4) nothing with 2 rounds (48 two-qubit gates) comes close to 1 round (24): on this chip the gate count
+still dominates. Across v0.16-v0.19: exact beats standard only once its cost is equal; halving the
+circuit beats both.
