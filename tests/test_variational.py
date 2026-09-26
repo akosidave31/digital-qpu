@@ -157,3 +157,65 @@ def test_phase_summary():
     assert "T1 ideal: fixed Grover 0.9453 -> best valid trained 0.9990  target >= 0.99: MET" in text
     assert "within 0.1 rad: MET" in text and "SPECIALISED" in text
     assert "dq-5/rounds1/phases minus best fixed (fixed/rounds1)" in text
+
+
+# ---- v0.19.0: the 6-CNOT phase gate ----
+from digital_qpu.variational import _ccp_items, _ccp6_items, two_qubit_count, summarize_cheap, JointGrover
+from digital_qpu.algorithms import _program, grover3
+from digital_qpu import parse
+from digital_qpu.executor import final_state
+
+
+def _render(items, lam):
+    return [it if isinstance(it, str) else f"{it[0]}({it[3] * lam!r}) q[{it[1]}];" for it in items]
+
+
+def test_six_cnot_phase_gate_equals_eight_cnot_one_exactly():
+    prep = ["ry(0.7) q[0];", "ry(1.9) q[1];", "ry(2.6) q[2];", "rz(0.4) q[1];"]
+    for lam in (0.0, 0.8, math.pi, 2.13, 4.9, -1.1):
+        a = final_state(parse(_program(3, 3, prep + _render(_ccp_items(0), lam), [])), IDEAL).psi
+        b = final_state(parse(_program(3, 3, prep + _render(_ccp6_items(0), lam), [])), IDEAL).psi
+        assert np.max(np.abs(np.asarray(a) - np.asarray(b))) < 1e-12, lam
+    assert sum(isinstance(x, str) and x.startswith("cx") for x in _ccp6_items(0)) == 6
+    assert sum(isinstance(x, str) and x.startswith("cx") for x in _ccp_items(0)) == 8
+
+
+def test_six_cnot_exact_grover():
+    th = math.asin(1 / math.sqrt(8))
+    lp = long_phase(2)
+    for m in range(8):
+        pg = PhaseGrover(marked=m, rounds=2, form="cnot6")
+        assert abs(pg.success(np.full(4, math.pi), IDEAL) - math.sin(5 * th) ** 2) < 1e-9
+        assert pg.success(np.full(4, lp), IDEAL) > 0.9999
+
+
+def test_six_cnot_form_costs_no_more_than_standard_grover():
+    pg = PhaseGrover(marked=5, rounds=2, form="cnot6")
+    six = two_qubit_count(pg.qasm(np.full(4, long_phase(2))), DQ5)
+    eight = two_qubit_count(PhaseGrover(marked=5, rounds=2).qasm(np.full(4, long_phase(2))), DQ5)
+    standard = two_qubit_count(grover3(0b101, 2)["qasm"], DQ5)
+    assert six <= standard < eight
+
+
+def test_six_cnot_gradient_matches_finite_differences():
+    pg = PhaseGrover(marked=6, rounds=2, form="cnot6")
+    p = np.array([1.1, 2.9, -0.4, 2.2])
+    g = pg.gradient(p, IDEAL)
+    eps = 1e-4
+    for k in range(4):
+        e = np.zeros(4)
+        e[k] = eps
+        fd = (pg.success(p + e, IDEAL) - pg.success(p - e, IDEAL)) / (2 * eps)
+        assert abs(fd - g[k]) < 1e-6, k
+
+
+def test_cheap_summary():
+    rows = {d: {"fixed/rounds2": 0.35, "fixed/rounds1": 0.44, "exact6/rounds2": 0.37, "exact8/rounds2": 0.34,
+                "dq-5-trained6/rounds2": 0.375, "dq-5-trained6/rounds1": 0.45} for d in range(1, 4)}
+    out = {"ideal": {"exact6/rounds2": 1.0, "exact8/rounds2": 1.0, "fixed/rounds2": 0.945, "fixed/rounds1": 0.78},
+           "two_qubit_gates": {"fixed/rounds2": 48, "fixed/rounds1": 24, "exact6/rounds2": 48, "exact8/rounds2": 60},
+           "runs": {"dq-5-trained6/rounds2": {"ideal_spread": 0.0}, "dq-5-trained6/rounds1": {"ideal_spread": 0.0}},
+           "test": rows}
+    text = "\n".join(summarize_cheap(out))
+    assert "T1" in text and "equal: MET" in text and "target >= +0.01: MET" in text
+    assert "best untrained (fixed/rounds1)" in text

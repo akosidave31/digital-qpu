@@ -332,3 +332,22 @@ and far below 1-round Grover's 43.9%, because its phase gates cost 8 CNOTs inste
 the same-gates baseline, phase training helps a little (2 rounds +2.0 points, 1 round +0.1), not enough to
 pay for the extra gates; (4) the best circuit found for dq-5 is still plain 1-round Grover. Across v0.16-v0.18:
 on this noisy chip, fewer two-qubit gates matter more than any tuning of angles or phases.
+
+## v0.19.0 - exact Grover at the same two-qubit cost as standard Grover
+
+Question: v0.18.0's exact Grover (100% on the ideal chip) lost on dq-5 because its phase gate used 8 CNOTs
+instead of 6. Built with 6, does it beat standard Grover on the noisy chip?
+Change: _ccp6_items - the standard 6-CNOT CCZ circuit with every T replaced by p(lambda/4) and every Tdg by
+p(-lambda/4). Its phases add up to lambda * (a + b + c - a^b - a^c - b^c + a^b^c) / 4 = lambda * abc for
+bits, so it is exact for any lambda (test: equals the 8-CNOT gate to 1e-12 for six angles).
+Experiment (cheap_phase_experiment): exact Grover = Long's phase (about 2.13) on every oracle and diffusion,
+untrained, 6-CNOT form; compared on dq-5 calibration days 1-10 with standard Grover (1 and 2 rounds) and
+v0.18.0's 8-CNOT exact Grover. Also: phases of the 6-CNOT form trained on dq-5 (joint over 8 items,
+lr 0.1, 60 epochs, 1 and 2 rounds; memorisation check as before).
+Naive expectation (written before running): with equal gates, success on the noisy chip scales roughly with
+the ideal success, 0.3555 x 1.000/0.9453 = 0.376, i.e. about +2 points; half of that is the target.
+Targets (set before running): tests pass; T1 two-qubit gates after compiling for dq-5: 6-CNOT exact Grover
+<= standard 2-round Grover; T2 unseen days: exact6 minus standard (both 2 rounds) >= +0.01; T3 unseen days:
+best valid trained circuit minus best untrained circuit (any form, 1 or 2 rounds) >= +0.02.
+Also reported: the best circuit overall on unseen days (1-round standard Grover led so far with 0.4386).
+Result: (pending)

@@ -232,6 +232,7 @@ ignores which qubits have the lowest error today.
 15. Trainable Grover: variational circuit trained on the noisy chip (v0.16.0: found to memorise the answer;
     v0.17.0: trained on all 8 marked items at once, with a permanent memorisation check)
 16. Trainable oracle/diffusion phases: tests Long's exact (100%) Grover (v0.18.0)
+17. Exact Grover at standard cost: 6-CNOT adjustable phase gate (v0.19.0)
 
 See EXPERIMENTS.md for investigations and the decisions they led to.
 
