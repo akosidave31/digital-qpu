@@ -316,4 +316,19 @@ Targets (set before running): tests pass (including: some common phase reaches >
 Long's formula gives > 99.99%); T1 ideal best valid trained mean >= 0.99; T2 the 4 learned phases of the
 ideal phases-only run each within 0.1 rad of Long's phi (or its mirror); T3 unseen days: best valid dq-5
 trained circuit minus the best fixed circuit (Toffoli or phase form, 1 or 2 rounds) >= +0.02.
-Result: (pending)
+Result (phone, Termux, 60 epochs, ~54 min): memorisation check passed for all 4 runs (spread 0.000).
+- T1 MET: ideal, phases only (4 parameters): mean over all 8 marked items 0.9547 (start) -> 1.0000 by
+  epoch 30; every item 1.00. Phases + layers (49 parameters): 0.9998.
+- T2 MET: learned phases (oracle 1, diffusion 1, oracle 2, diffusion 2) 2.103 2.204 2.204 2.103 vs Long's
+  2.127; largest deviation 0.077 rad. Not all equal: the equal-phase Long solution is one point of a family
+  of exact solutions, and training found a nearby symmetric one.
+- T3 MISSED: unseen dq-5 days, best trained (1 round, phases) minus best fixed (Toffoli form, 1 round)
+  = -0.0043 +/- 0.0002 (0/10 days). Unseen-day means: fixed Toffoli 2 rounds 0.3555, 1 round 0.4386;
+  fixed phase form 2 rounds 0.3307, 1 round 0.4330; dq-5-trained phases 2 rounds 0.3503, 1 round 0.4344;
+  ideal-trained (exact, 100% on the ideal chip) 2 rounds 0.3452.
+Conclusions: (1) training rediscovered Long's exact Grover: 100% for every marked item with 4 phases,
+confirming the theory; (2) on the noisy chip the exact algorithm LOSES: 34.5%, below standard Grover's 35.6%
+and far below 1-round Grover's 43.9%, because its phase gates cost 8 CNOTs instead of 6 per CCZ; (3) against
+the same-gates baseline, phase training helps a little (2 rounds +2.0 points, 1 round +0.1), not enough to
+pay for the extra gates; (4) the best circuit found for dq-5 is still plain 1-round Grover. Across v0.16-v0.18:
+on this noisy chip, fewer two-qubit gates matter more than any tuning of angles or phases.
