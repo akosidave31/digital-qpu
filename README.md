@@ -183,6 +183,14 @@ Measure it yourself, like a lab would:
 
 ## Verified
 
+Quantum-validation suite (`python validation/quantum_validation.py`, report in `validation/REPORT.txt`):
+96 checks of the quantum-circuit MATHEMATICS - single-qubit gates and identities, interference, Bell
+state (amplitudes, correlations, CHSH value 2*sqrt(2) of the simulated state), Bernstein-Vazirani,
+Deutsch-Jozsa, Grover (2-4 qubits), QFT, Shor N=15 - each compared with a hand-derived result AND an
+independent reference simulator written separately (own gate matrices, own QASM reader, dense Kronecker
+products), plus seeded sampling checks. This shows the classical simulation computes what the
+quantum-circuit model predicts; it does not show physical quantum behaviour or any speedup.
+
 - Noise formulas: dephasing and energy loss during gates match the exact expressions.
 - Compiled programs give identical results to the originals (random circuits, including routing),
   checked against both the uncompiled program and Qiskit.

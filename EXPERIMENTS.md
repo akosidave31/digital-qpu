@@ -212,3 +212,23 @@ goes from submission to DONE in < 2 s; while noisy Shor runs on dq-12, GET /devi
 Result (phone): tests pass (171 passed, 2 slow skipped) - met. Noisy Bell on dq-5, 1000 shots,
 submission to DONE: 0.121 s - met (< 2 s; counts 11: 471, 00: 470, 01: 36, 10: 23). GET /devices while
 noisy Shor ran on dq-12 (status RUNNING): 0.009 s - met (< 0.5 s).
+
+## v0.15.0 - quantum-validation suite
+
+Question: does Digital-QPU reproduce the mathematics of the ideal quantum-circuit model? (Not: is it a
+quantum computer - it is a classical simulation, and nothing here tests physical quantum behaviour or speed.)
+Method: validation/quantum_validation.py - 96 checks in 8 sections, each against a hand-derived analytic
+result (numpy.fft for the QFT) AND an independent reference simulator in the same file (own gate
+matrices, own QASM reader, dense 2^n x 2^n Kronecker matrices, opposite qubit ordering; imports nothing
+from digital_qpu or digital_qubit), plus seeded sampling checks (20000 shots, seed 20260926).
+Tolerances fixed before the first run: exact 1e-10, sampling 5 sigma, zero-probability outcomes never sampled.
+First run: 94/96. Both failures were wrong hand-written expectations in the suite (SX|+> is |+>, not
+e^{i pi/4}|+>; X.Y = +iZ, not -iZ); Digital-QPU and the reference agreed exactly (difference 0.0) in
+both. Expectations corrected, tolerances unchanged.
+Result (sandbox run, Python 3, numpy 2.4): 96/96 pass; largest exact error 5.8e-15; largest sampling
+deviation 1.08 sigma. Verified as mathematics: gate actions and phases, identities, normalization,
+interference, Bell-state amplitudes and correlations (incl. X basis, CHSH 2*sqrt(2) of the simulated
+state), BV, DJ, Grover 2-4 qubits, QFT, phase estimation, Shor N=15 incl. post-processing.
+Not verified: physical quantum behaviour, speedup, physical Bell nonlocality, true randomness, noisy-chip
+realism vs real hardware, Shor beyond N=15/a=7 (and that circuit uses knowledge of the period).
+Phone confirmation (Termux): full test suite 270 passed, 2 slow skipped (includes all 96 validation cases).

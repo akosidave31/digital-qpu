@@ -1,0 +1,754 @@
+Digital-QPU quantum-validation suite
+Classical simulation on classical hardware: this checks MATHEMATICAL agreement with the ideal
+quantum-circuit model. It does not demonstrate physical quantum behaviour or any speedup.
+Tolerances: exact < 1e-10 (amplitudes) / < 1e-10 (probabilities); sampling within 5 sigma; seed 20260926; 20000 shots
+
+== 1 single-qubit ==
+[PASS] X on |0>
+   circuit/input : x q[0]
+   expected      : +1.0000|1>
+   Digital-QPU   : +1.0000|1>
+   reference     : +1.0000|1>
+   abs error 0.0e+00 | prob error 0.0e+00
+   demonstrates  : mathematical equivalence: exact amplitudes and probabilities (classical simulation)
+[PASS] X on |1>
+   circuit/input : x q[0]; x q[0]
+   expected      : +1.0000|0>
+   Digital-QPU   : +1.0000|0>
+   reference     : +1.0000|0>
+   abs error 0.0e+00 | prob error 0.0e+00
+   demonstrates  : mathematical equivalence: exact amplitudes and probabilities (classical simulation)
+[PASS] X on |+>
+   circuit/input : h q[0]; x q[0]
+   expected      : +0.7071|0> +0.7071|1>
+   Digital-QPU   : +0.7071|0> +0.7071|1>
+   reference     : +0.7071|0> +0.7071|1>
+   abs error 1.1e-16 | prob error 1.1e-16
+   demonstrates  : mathematical equivalence: exact amplitudes and probabilities (classical simulation)
+[PASS] Y on |0>
+   circuit/input : y q[0]
+   expected      : +1.0000i|1>
+   Digital-QPU   : +1.0000i|1>
+   reference     : +1.0000i|1>
+   abs error 0.0e+00 | prob error 0.0e+00
+   demonstrates  : mathematical equivalence: exact amplitudes and probabilities (classical simulation)
+[PASS] Y on |1>
+   circuit/input : x q[0]; y q[0]
+   expected      : -1.0000i|0>
+   Digital-QPU   : -1.0000i|0>
+   reference     : -1.0000i|0>
+   abs error 0.0e+00 | prob error 0.0e+00
+   demonstrates  : mathematical equivalence: exact amplitudes and probabilities (classical simulation)
+[PASS] Y on |+>
+   circuit/input : h q[0]; y q[0]
+   expected      : -0.7071i|0> +0.7071i|1>
+   Digital-QPU   : -0.7071i|0> +0.7071i|1>
+   reference     : -0.7071i|0> +0.7071i|1>
+   abs error 1.1e-16 | prob error 1.1e-16
+   demonstrates  : mathematical equivalence: exact amplitudes and probabilities (classical simulation)
+[PASS] Z on |0>
+   circuit/input : z q[0]
+   expected      : +1.0000|0>
+   Digital-QPU   : +1.0000|0>
+   reference     : +1.0000|0>
+   abs error 0.0e+00 | prob error 0.0e+00
+   demonstrates  : mathematical equivalence: exact amplitudes and probabilities (classical simulation)
+   note          : phase-only differences are visible in amplitudes, not in probabilities
+[PASS] Z on |1>
+   circuit/input : x q[0]; z q[0]
+   expected      : -1.0000|1>
+   Digital-QPU   : -1.0000|1>
+   reference     : -1.0000|1>
+   abs error 0.0e+00 | prob error 0.0e+00
+   demonstrates  : mathematical equivalence: exact amplitudes and probabilities (classical simulation)
+   note          : phase-only differences are visible in amplitudes, not in probabilities
+[PASS] Z on |+>
+   circuit/input : h q[0]; z q[0]
+   expected      : +0.7071|0> -0.7071|1>
+   Digital-QPU   : +0.7071|0> -0.7071|1>
+   reference     : +0.7071|0> -0.7071|1>
+   abs error 1.1e-16 | prob error 1.1e-16
+   demonstrates  : mathematical equivalence: exact amplitudes and probabilities (classical simulation)
+[PASS] H on |0>
+   circuit/input : h q[0]
+   expected      : +0.7071|0> +0.7071|1>
+   Digital-QPU   : +0.7071|0> +0.7071|1>
+   reference     : +0.7071|0> +0.7071|1>
+   abs error 1.1e-16 | prob error 1.1e-16
+   demonstrates  : mathematical equivalence: exact amplitudes and probabilities (classical simulation)
+[PASS] H on |1>
+   circuit/input : x q[0]; h q[0]
+   expected      : +0.7071|0> -0.7071|1>
+   Digital-QPU   : +0.7071|0> -0.7071|1>
+   reference     : +0.7071|0> -0.7071|1>
+   abs error 1.1e-16 | prob error 1.1e-16
+   demonstrates  : mathematical equivalence: exact amplitudes and probabilities (classical simulation)
+[PASS] H on |+>
+   circuit/input : h q[0]; h q[0]
+   expected      : +1.0000|0>
+   Digital-QPU   : +1.0000|0>
+   reference     : +1.0000|0>
+   abs error 2.2e-16 | prob error 4.4e-16
+   demonstrates  : mathematical equivalence: exact amplitudes and probabilities (classical simulation)
+[PASS] S on |0>
+   circuit/input : s q[0]
+   expected      : +1.0000|0>
+   Digital-QPU   : +1.0000|0>
+   reference     : +1.0000|0>
+   abs error 0.0e+00 | prob error 0.0e+00
+   demonstrates  : mathematical equivalence: exact amplitudes and probabilities (classical simulation)
+   note          : phase-only differences are visible in amplitudes, not in probabilities
+[PASS] S on |1>
+   circuit/input : x q[0]; s q[0]
+   expected      : +1.0000i|1>
+   Digital-QPU   : +1.0000i|1>
+   reference     : +1.0000i|1>
+   abs error 0.0e+00 | prob error 0.0e+00
+   demonstrates  : mathematical equivalence: exact amplitudes and probabilities (classical simulation)
+   note          : phase-only differences are visible in amplitudes, not in probabilities
+[PASS] S on |+>
+   circuit/input : h q[0]; s q[0]
+   expected      : +0.7071|0> +0.7071i|1>
+   Digital-QPU   : +0.7071|0> +0.7071i|1>
+   reference     : +0.7071|0> +0.7071i|1>
+   abs error 1.1e-16 | prob error 1.1e-16
+   demonstrates  : mathematical equivalence: exact amplitudes and probabilities (classical simulation)
+[PASS] T on |0>
+   circuit/input : t q[0]
+   expected      : +1.0000|0>
+   Digital-QPU   : +1.0000|0>
+   reference     : +1.0000|0>
+   abs error 0.0e+00 | prob error 0.0e+00
+   demonstrates  : mathematical equivalence: exact amplitudes and probabilities (classical simulation)
+   note          : phase-only differences are visible in amplitudes, not in probabilities
+[PASS] T on |1>
+   circuit/input : x q[0]; t q[0]
+   expected      : (+0.7071+0.7071i)|1>
+   Digital-QPU   : (+0.7071+0.7071i)|1>
+   reference     : (+0.7071+0.7071i)|1>
+   abs error 0.0e+00 | prob error 0.0e+00
+   demonstrates  : mathematical equivalence: exact amplitudes and probabilities (classical simulation)
+   note          : phase-only differences are visible in amplitudes, not in probabilities
+[PASS] T on |+>
+   circuit/input : h q[0]; t q[0]
+   expected      : +0.7071|0> (+0.5000+0.5000i)|1>
+   Digital-QPU   : +0.7071|0> (+0.5000+0.5000i)|1>
+   reference     : +0.7071|0> (+0.5000+0.5000i)|1>
+   abs error 1.6e-16 | prob error 1.1e-16
+   demonstrates  : mathematical equivalence: exact amplitudes and probabilities (classical simulation)
+[PASS] SDG on |0>
+   circuit/input : sdg q[0]
+   expected      : +1.0000|0>
+   Digital-QPU   : +1.0000|0>
+   reference     : +1.0000|0>
+   abs error 0.0e+00 | prob error 0.0e+00
+   demonstrates  : mathematical equivalence: exact amplitudes and probabilities (classical simulation)
+   note          : phase-only differences are visible in amplitudes, not in probabilities
+[PASS] SDG on |1>
+   circuit/input : x q[0]; sdg q[0]
+   expected      : -1.0000i|1>
+   Digital-QPU   : -1.0000i|1>
+   reference     : -1.0000i|1>
+   abs error 0.0e+00 | prob error 0.0e+00
+   demonstrates  : mathematical equivalence: exact amplitudes and probabilities (classical simulation)
+   note          : phase-only differences are visible in amplitudes, not in probabilities
+[PASS] SDG on |+>
+   circuit/input : h q[0]; sdg q[0]
+   expected      : +0.7071|0> -0.7071i|1>
+   Digital-QPU   : +0.7071|0> -0.7071i|1>
+   reference     : +0.7071|0> -0.7071i|1>
+   abs error 1.1e-16 | prob error 1.1e-16
+   demonstrates  : mathematical equivalence: exact amplitudes and probabilities (classical simulation)
+[PASS] TDG on |0>
+   circuit/input : tdg q[0]
+   expected      : +1.0000|0>
+   Digital-QPU   : +1.0000|0>
+   reference     : +1.0000|0>
+   abs error 0.0e+00 | prob error 0.0e+00
+   demonstrates  : mathematical equivalence: exact amplitudes and probabilities (classical simulation)
+   note          : phase-only differences are visible in amplitudes, not in probabilities
+[PASS] TDG on |1>
+   circuit/input : x q[0]; tdg q[0]
+   expected      : (+0.7071-0.7071i)|1>
+   Digital-QPU   : (+0.7071-0.7071i)|1>
+   reference     : (+0.7071-0.7071i)|1>
+   abs error 0.0e+00 | prob error 0.0e+00
+   demonstrates  : mathematical equivalence: exact amplitudes and probabilities (classical simulation)
+   note          : phase-only differences are visible in amplitudes, not in probabilities
+[PASS] TDG on |+>
+   circuit/input : h q[0]; tdg q[0]
+   expected      : +0.7071|0> (+0.5000-0.5000i)|1>
+   Digital-QPU   : +0.7071|0> (+0.5000-0.5000i)|1>
+   reference     : +0.7071|0> (+0.5000-0.5000i)|1>
+   abs error 1.6e-16 | prob error 1.1e-16
+   demonstrates  : mathematical equivalence: exact amplitudes and probabilities (classical simulation)
+[PASS] SX on |0>
+   circuit/input : sx q[0]
+   expected      : (+0.5000+0.5000i)|0> (+0.5000-0.5000i)|1>
+   Digital-QPU   : (+0.5000+0.5000i)|0> (+0.5000-0.5000i)|1>
+   reference     : (+0.5000+0.5000i)|0> (+0.5000-0.5000i)|1>
+   abs error 0.0e+00 | prob error 1.1e-16
+   demonstrates  : mathematical equivalence: exact amplitudes and probabilities (classical simulation)
+[PASS] SX on |1>
+   circuit/input : x q[0]; sx q[0]
+   expected      : (+0.5000-0.5000i)|0> (+0.5000+0.5000i)|1>
+   Digital-QPU   : (+0.5000-0.5000i)|0> (+0.5000+0.5000i)|1>
+   reference     : (+0.5000-0.5000i)|0> (+0.5000+0.5000i)|1>
+   abs error 0.0e+00 | prob error 1.1e-16
+   demonstrates  : mathematical equivalence: exact amplitudes and probabilities (classical simulation)
+[PASS] SX on |+>
+   circuit/input : h q[0]; sx q[0]
+   expected      : +0.7071|0> +0.7071|1>
+   Digital-QPU   : +0.7071|0> +0.7071|1>
+   reference     : +0.7071|0> +0.7071|1>
+   abs error 1.1e-16 | prob error 1.1e-16
+   demonstrates  : mathematical equivalence: exact amplitudes and probabilities (classical simulation)
+[PASS] RX(0.7) on |0>
+   circuit/input : rx(0.7) q[0]
+   expected      : +0.9394|0> -0.3429i|1>
+   Digital-QPU   : +0.9394|0> -0.3429i|1>
+   reference     : +0.9394|0> -0.3429i|1>
+   abs error 0.0e+00 | prob error 0.0e+00
+   demonstrates  : mathematical equivalence: exact amplitudes and probabilities (classical simulation)
+[PASS] RY(0.7) on |0>
+   circuit/input : ry(0.7) q[0]
+   expected      : +0.9394|0> +0.3429|1>
+   Digital-QPU   : +0.9394|0> +0.3429|1>
+   reference     : +0.9394|0> +0.3429|1>
+   abs error 0.0e+00 | prob error 0.0e+00
+   demonstrates  : mathematical equivalence: exact amplitudes and probabilities (classical simulation)
+[PASS] RZ(0.7) on |0>
+   circuit/input : rz(0.7) q[0]
+   expected      : (+0.9394-0.3429i)|0>
+   Digital-QPU   : (+0.9394-0.3429i)|0>
+   reference     : (+0.9394-0.3429i)|0>
+   abs error 0.0e+00 | prob error 0.0e+00
+   demonstrates  : mathematical equivalence: exact amplitudes and probabilities (classical simulation)
+   note          : RZ convention exp(-i theta Z/2) (Qiskit); global phase included
+[PASS] P(0.7) on |+>
+   circuit/input : h q[0]; p(0.7) q[0]
+   expected      : +0.7071|0> (+0.5408+0.4555i)|1>
+   Digital-QPU   : +0.7071|0> (+0.5408+0.4555i)|1>
+   reference     : +0.7071|0> (+0.5408+0.4555i)|1>
+   abs error 1.6e-16 | prob error 1.1e-16
+   demonstrates  : mathematical equivalence: exact amplitudes and probabilities (classical simulation)
+[PASS] normalization + probability conservation (1 qubits, 60 random gates)
+   circuit/input : random circuit, seed 20260926
+   expected      : ||psi|| = 1, sum of probabilities = 1, same state as reference
+   Digital-QPU   : | ||psi||-1 | = 0.0e+00, |sum P - 1| = 0.0e+00
+   reference     : (+0.4671+0.5083i)|0> (-0.4707-0.5495i)|1>
+   abs error 7.9e-16 | prob error 0.0e+00
+   demonstrates  : mathematical equivalence: exact amplitudes and probabilities (classical simulation)
+[PASS] normalization + probability conservation (3 qubits, 80 random gates)
+   circuit/input : random circuit, seed 20260926
+   expected      : ||psi|| = 1, sum of probabilities = 1, same state as reference
+   Digital-QPU   : | ||psi||-1 | = 0.0e+00, |sum P - 1| = 0.0e+00
+   reference     : (-0.2690+0.3305i)|001> (+0.5013-0.0180i)|100> (+6 more)
+   abs error 3.3e-16 | prob error 0.0e+00
+   demonstrates  : mathematical equivalence: exact amplitudes and probabilities (classical simulation)
+[PASS] normalization + probability conservation (5 qubits, 120 random gates)
+   circuit/input : random circuit, seed 20260926
+   expected      : ||psi|| = 1, sum of probabilities = 1, same state as reference
+   Digital-QPU   : | ||psi||-1 | = 0.0e+00, |sum P - 1| = 2.2e-16
+   reference     : (-0.1784+0.2387i)|01001> (-0.0449+0.2823i)|11101> (+30 more)
+   abs error 3.2e-16 | prob error 2.2e-16
+   demonstrates  : mathematical equivalence: exact amplitudes and probabilities (classical simulation)
+[PASS] identity H.H = I
+   circuit/input : ry(0.7) rz(1.3) then h h  vs  nothing
+   expected      : state A = 1 x state B (exactly, including phase)
+   Digital-QPU   : (+0.7478-0.5685i)|0> (+0.2730+0.2075i)|1>
+   reference     : (+0.7478-0.5685i)|0> (+0.2730+0.2075i)|1>
+   abs error 4.0e-16 | prob error 1.1e-16
+   demonstrates  : mathematical equivalence: exact amplitudes and probabilities (classical simulation)
+[PASS] identity X.X = I
+   circuit/input : ry(0.7) rz(1.3) then x x  vs  nothing
+   expected      : state A = 1 x state B (exactly, including phase)
+   Digital-QPU   : (+0.7478-0.5685i)|0> (+0.2730+0.2075i)|1>
+   reference     : (+0.7478-0.5685i)|0> (+0.2730+0.2075i)|1>
+   abs error 0.0e+00 | prob error 0.0e+00
+   demonstrates  : mathematical equivalence: exact amplitudes and probabilities (classical simulation)
+[PASS] identity Y.Y = I
+   circuit/input : ry(0.7) rz(1.3) then y y  vs  nothing
+   expected      : state A = 1 x state B (exactly, including phase)
+   Digital-QPU   : (+0.7478-0.5685i)|0> (+0.2730+0.2075i)|1>
+   reference     : (+0.7478-0.5685i)|0> (+0.2730+0.2075i)|1>
+   abs error 0.0e+00 | prob error 0.0e+00
+   demonstrates  : mathematical equivalence: exact amplitudes and probabilities (classical simulation)
+[PASS] identity Z.Z = I
+   circuit/input : ry(0.7) rz(1.3) then z z  vs  nothing
+   expected      : state A = 1 x state B (exactly, including phase)
+   Digital-QPU   : (+0.7478-0.5685i)|0> (+0.2730+0.2075i)|1>
+   reference     : (+0.7478-0.5685i)|0> (+0.2730+0.2075i)|1>
+   abs error 0.0e+00 | prob error 0.0e+00
+   demonstrates  : mathematical equivalence: exact amplitudes and probabilities (classical simulation)
+[PASS] identity S.S = Z
+   circuit/input : ry(0.7) rz(1.3) then s s  vs  z
+   expected      : state A = 1 x state B (exactly, including phase)
+   Digital-QPU   : (+0.7478-0.5685i)|0> (-0.2730-0.2075i)|1>
+   reference     : (+0.7478-0.5685i)|0> (-0.2730-0.2075i)|1>
+   abs error 0.0e+00 | prob error 0.0e+00
+   demonstrates  : mathematical equivalence: exact amplitudes and probabilities (classical simulation)
+[PASS] identity T.T = S
+   circuit/input : ry(0.7) rz(1.3) then t t  vs  s
+   expected      : state A = 1 x state B (exactly, including phase)
+   Digital-QPU   : (+0.7478-0.5685i)|0> (-0.2075+0.2730i)|1>
+   reference     : (+0.7478-0.5685i)|0> (-0.2075+0.2730i)|1>
+   abs error 6.2e-17 | prob error 1.1e-16
+   demonstrates  : mathematical equivalence: exact amplitudes and probabilities (classical simulation)
+[PASS] identity S.Sdg = I
+   circuit/input : ry(0.7) rz(1.3) then s sdg  vs  nothing
+   expected      : state A = 1 x state B (exactly, including phase)
+   Digital-QPU   : (+0.7478-0.5685i)|0> (+0.2730+0.2075i)|1>
+   reference     : (+0.7478-0.5685i)|0> (+0.2730+0.2075i)|1>
+   abs error 0.0e+00 | prob error 0.0e+00
+   demonstrates  : mathematical equivalence: exact amplitudes and probabilities (classical simulation)
+[PASS] identity T.Tdg = I
+   circuit/input : ry(0.7) rz(1.3) then t tdg  vs  nothing
+   expected      : state A = 1 x state B (exactly, including phase)
+   Digital-QPU   : (+0.7478-0.5685i)|0> (+0.2730+0.2075i)|1>
+   reference     : (+0.7478-0.5685i)|0> (+0.2730+0.2075i)|1>
+   abs error 2.8e-17 | prob error 0.0e+00
+   demonstrates  : mathematical equivalence: exact amplitudes and probabilities (classical simulation)
+[PASS] identity SX.SX = X
+   circuit/input : ry(0.7) rz(1.3) then sx sx  vs  x
+   expected      : state A = 1 x state B (exactly, including phase)
+   Digital-QPU   : (+0.2730+0.2075i)|0> (+0.7478-0.5685i)|1>
+   reference     : (+0.2730+0.2075i)|0> (+0.7478-0.5685i)|1>
+   abs error 1.1e-16 | prob error 1.1e-16
+   demonstrates  : mathematical equivalence: exact amplitudes and probabilities (classical simulation)
+[PASS] identity H.Z.H = X
+   circuit/input : ry(0.7) rz(1.3) then h z h  vs  x
+   expected      : state A = 1 x state B (exactly, including phase)
+   Digital-QPU   : (+0.2730+0.2075i)|0> (+0.7478-0.5685i)|1>
+   reference     : (+0.2730+0.2075i)|0> (+0.7478-0.5685i)|1>
+   abs error 4.0e-16 | prob error 1.1e-16
+   demonstrates  : mathematical equivalence: exact amplitudes and probabilities (classical simulation)
+[PASS] identity H.X.H = Z
+   circuit/input : ry(0.7) rz(1.3) then h x h  vs  z
+   expected      : state A = 1 x state B (exactly, including phase)
+   Digital-QPU   : (+0.7478-0.5685i)|0> (-0.2730-0.2075i)|1>
+   reference     : (+0.7478-0.5685i)|0> (-0.2730-0.2075i)|1>
+   abs error 4.0e-16 | prob error 1.1e-16
+   demonstrates  : mathematical equivalence: exact amplitudes and probabilities (classical simulation)
+[PASS] identity H.Y.H = -Y
+   circuit/input : ry(0.7) rz(1.3) then h y h  vs  y
+   expected      : state A = -1 x state B (exactly, including phase)
+   Digital-QPU   : (-0.2075+0.2730i)|0> (-0.5685-0.7478i)|1>
+   reference     : (-0.2075+0.2730i)|0> (-0.5685-0.7478i)|1>
+   abs error 4.0e-16 | prob error 1.1e-16
+   demonstrates  : mathematical equivalence: exact amplitudes and probabilities (classical simulation)
+[PASS] identity X.Y = iZ  (Y first, then X)
+   circuit/input : ry(0.7) rz(1.3) then y x  vs  z
+   expected      : state A = 1j x state B (exactly, including phase)
+   Digital-QPU   : (+0.5685+0.7478i)|0> (+0.2075-0.2730i)|1>
+   reference     : (+0.5685+0.7478i)|0> (+0.2075-0.2730i)|1>
+   abs error 0.0e+00 | prob error 0.0e+00
+   demonstrates  : mathematical equivalence: exact amplitudes and probabilities (classical simulation)
+
+== 2 interference ==
+[PASS] H->H = I on |0>
+   circuit/input : h h
+   expected      : +1.0000|0>
+   Digital-QPU   : +1.0000|0>
+   reference     : +1.0000|0>
+   abs error 2.2e-16 | prob error 4.4e-16
+   demonstrates  : mathematical equivalence: exact amplitudes and probabilities (classical simulation)
+   note          : destructive interference: the other outcome's amplitude cancels to 0
+[PASS] H->X->H = Z on |0>
+   circuit/input : h x h
+   expected      : +1.0000|0>
+   Digital-QPU   : +1.0000|0>
+   reference     : +1.0000|0>
+   abs error 2.2e-16 | prob error 4.4e-16
+   demonstrates  : mathematical equivalence: exact amplitudes and probabilities (classical simulation)
+   note          : destructive interference: the other outcome's amplitude cancels to 0
+[PASS] H->X->H = Z on |1>
+   circuit/input : x h x h
+   expected      : -1.0000|1>
+   Digital-QPU   : -1.0000|1>
+   reference     : -1.0000|1>
+   abs error 2.2e-16 | prob error 4.4e-16
+   demonstrates  : mathematical equivalence: exact amplitudes and probabilities (classical simulation)
+   note          : destructive interference: the other outcome's amplitude cancels to 0
+[PASS] H->Z->H = X on |0>
+   circuit/input : h z h
+   expected      : +1.0000|1>
+   Digital-QPU   : +1.0000|1>
+   reference     : +1.0000|1>
+   abs error 2.2e-16 | prob error 4.4e-16
+   demonstrates  : mathematical equivalence: exact amplitudes and probabilities (classical simulation)
+   note          : destructive interference: the other outcome's amplitude cancels to 0
+[PASS] H->Z->H = X on |1>
+   circuit/input : x h z h
+   expected      : +1.0000|0>
+   Digital-QPU   : +1.0000|0>
+   reference     : +1.0000|0>
+   abs error 2.2e-16 | prob error 4.4e-16
+   demonstrates  : mathematical equivalence: exact amplitudes and probabilities (classical simulation)
+   note          : destructive interference: the other outcome's amplitude cancels to 0
+[PASS] H->Z->H->Z on |0>
+   circuit/input : h z h z
+   expected      : -1.0000|1>
+   Digital-QPU   : -1.0000|1>
+   reference     : -1.0000|1>
+   abs error 2.2e-16 | prob error 4.4e-16
+   demonstrates  : mathematical equivalence: exact amplitudes and probabilities (classical simulation)
+   note          : destructive interference: the other outcome's amplitude cancels to 0
+[PASS] H->Z->H->Z on |1>
+   circuit/input : x h z h z
+   expected      : +1.0000|0>
+   Digital-QPU   : +1.0000|0>
+   reference     : +1.0000|0>
+   abs error 2.2e-16 | prob error 4.4e-16
+   demonstrates  : mathematical equivalence: exact amplitudes and probabilities (classical simulation)
+   note          : destructive interference: the other outcome's amplitude cancels to 0
+[PASS] H->S->S->H = X on |0>
+   circuit/input : h s s h
+   expected      : +1.0000|1>
+   Digital-QPU   : +1.0000|1>
+   reference     : +1.0000|1>
+   abs error 2.2e-16 | prob error 4.4e-16
+   demonstrates  : mathematical equivalence: exact amplitudes and probabilities (classical simulation)
+   note          : destructive interference: the other outcome's amplitude cancels to 0
+[PASS] H->T->T->T->T->H = X on |0>
+   circuit/input : h t t t t h
+   expected      : +1.0000|1>
+   Digital-QPU   : +1.0000|1>
+   reference     : +1.0000|1>
+   abs error 2.8e-16 | prob error 4.4e-16
+   demonstrates  : mathematical equivalence: exact amplitudes and probabilities (classical simulation)
+   note          : destructive interference: the other outcome's amplitude cancels to 0
+[PASS] H->S->H on |0>
+   circuit/input : h s h
+   expected      : (+0.5000+0.5000i)|0> (+0.5000-0.5000i)|1>
+   Digital-QPU   : (+0.5000+0.5000i)|0> (+0.5000-0.5000i)|1>
+   reference     : (+0.5000+0.5000i)|0> (+0.5000-0.5000i)|1>
+   abs error 1.6e-16 | prob error 3.3e-16
+   demonstrates  : mathematical equivalence: exact amplitudes and probabilities (classical simulation)
+[PASS] phase sweep H->P(phi)->H, 16 angles 0..2pi
+   circuit/input : h p(phi) h, phi = 2 pi k/16
+   expected      : P(0) = cos^2(phi/2) for every phi; amplitudes (1 +/- e^{i phi})/2
+   Digital-QPU   : P(0) at phi=0, pi/2, pi, 3pi/2: 1.0000, 0.5000, 0.0000, 0.5000
+   reference     : same formula (reference simulator)
+   abs error 2.5e-16 | prob error 2.2e-16
+   demonstrates  : mathematical equivalence: exact amplitudes and probabilities (classical simulation)
+[PASS] H->H measured 20000 times (interference is deterministic)
+   circuit/input : h h
+   expected      : P(0)=1.0000
+   Digital-QPU   : P(0)=1.0000  [20000 shots, seed 20260926]
+   reference     : P(0)=1.0000
+   abs error n/a | prob error 0.0e+00
+   demonstrates  : statistical: sampled counts consistent with exact probabilities (classical pseudo-random sampling)
+   note          : a classical coin flip twice would give 50/50; worst deviation 0.00 sigma (limit 5)
+
+== 3 Bell state ==
+[PASS] H(q0) then CNOT(q0,q1) on |00>
+   circuit/input : h q0; cx q0,q1
+   expected      : (|00> + |11>)/sqrt(2)
+   Digital-QPU   : +0.7071|00> +0.7071|11>
+   reference     : +0.7071|00> +0.7071|11>
+   abs error 1.1e-16 | prob error 1.1e-16
+   demonstrates  : mathematical equivalence: exact amplitudes and probabilities (classical simulation)
+[PASS] Bell measurement statistics
+   circuit/input : h q0; cx q0,q1; measure
+   expected      : P(00)=0.5000 P(11)=0.5000
+   Digital-QPU   : P(00)=0.5001 P(11)=0.4999  [20000 shots, seed 20260926]
+   reference     : P(00)=0.5000 P(11)=0.5000
+   abs error n/a | prob error 1.5e-04
+   demonstrates  : statistical: sampled counts consistent with exact probabilities (classical pseudo-random sampling)
+   note          : worst deviation 0.04 sigma (limit 5)
+[PASS] perfect correlation in the Z basis (sampled)
+   circuit/input : Bell, 20000 shots
+   expected      : bit0 == bit1 in every shot (fraction 1.0)
+   Digital-QPU   : fraction equal = 1.000000
+   reference     : exact: 1.0
+   abs error n/a | prob error 0.0e+00
+   demonstrates  : statistical: sampled counts consistent with exact probabilities (classical pseudo-random sampling)
+[PASS] correlation in the X basis (entanglement signature)
+   circuit/input : Bell, then H on both, measure
+   expected      : P(00)=0.5000 P(11)=0.5000
+   Digital-QPU   : P(00)=0.5000 P(11)=0.5000
+   reference     : P(00)=0.5000 P(11)=0.5000
+   abs error 1.1e-16 | prob error 2.2e-16
+   demonstrates  : mathematical equivalence: exact probabilities; amplitudes vs reference (classical simulation)
+   note          : a classical 50/50 mixture of |00> and |11> would give P = 0.25, 0.25, 0.25, 0.25 here (uncorrelated); the superposition keeps 00/11 only
+[PASS] CHSH value of the simulated Bell state
+   circuit/input : E(a,b) from exact probabilities, a=0, pi/2; b=+/-pi/4
+   expected      : 2*sqrt(2) = 2.828427 (quantum prediction; local-hidden-variable bound is 2)
+   Digital-QPU   : 2.828427
+   reference     : 2.828427
+   abs error n/a | prob error 4.4e-16
+   demonstrates  : computed quantity of the simulated state (not a physical experiment)
+   note          : this reproduces the quantum PREDICTION; a classical computer cannot perform a physical Bell test
+
+== 4 Bernstein-Vazirani ==
+[PASS] hidden string 000 (n=3)
+   circuit/input : BV oracle for s=000, one query
+   expected      : |000> (x) |-> ; P(000) = 1 from ONE oracle query
+   Digital-QPU   : +0.7071|0000> -0.7071|1000>
+   reference     : +0.7071|0000> -0.7071|1000>
+   abs error 5.6e-16 | prob error 1.1e-15
+   demonstrates  : mathematical equivalence: exact amplitudes and probabilities (classical simulation)
+[PASS] hidden string 101 (n=3)
+   circuit/input : BV oracle for s=101, one query
+   expected      : |101> (x) |-> ; P(101) = 1 from ONE oracle query
+   Digital-QPU   : +0.7071|0101> -0.7071|1101>
+   reference     : +0.7071|0101> -0.7071|1101>
+   abs error 5.6e-16 | prob error 1.1e-15
+   demonstrates  : mathematical equivalence: exact amplitudes and probabilities (classical simulation)
+[PASS] hidden string 011 (n=3)
+   circuit/input : BV oracle for s=011, one query
+   expected      : |011> (x) |-> ; P(011) = 1 from ONE oracle query
+   Digital-QPU   : +0.7071|0011> -0.7071|1011>
+   reference     : +0.7071|0011> -0.7071|1011>
+   abs error 4.4e-16 | prob error 1.1e-15
+   demonstrates  : mathematical equivalence: exact amplitudes and probabilities (classical simulation)
+[PASS] hidden string 111 (n=3)
+   circuit/input : BV oracle for s=111, one query
+   expected      : |111> (x) |-> ; P(111) = 1 from ONE oracle query
+   Digital-QPU   : +0.7071|0111> -0.7071|1111>
+   reference     : +0.7071|0111> -0.7071|1111>
+   abs error 4.4e-16 | prob error 1.1e-15
+   demonstrates  : mathematical equivalence: exact amplitudes and probabilities (classical simulation)
+[PASS] hidden string 1011 (n=4)
+   circuit/input : BV oracle for s=1011, one query
+   expected      : |1011> (x) |-> ; P(1011) = 1 from ONE oracle query
+   Digital-QPU   : +0.7071|01011> -0.7071|11011>
+   reference     : +0.7071|01011> -0.7071|11011>
+   abs error 6.7e-16 | prob error 1.4e-15
+   demonstrates  : mathematical equivalence: exact amplitudes and probabilities (classical simulation)
+[PASS] hidden string 10110 (n=5)
+   circuit/input : BV oracle for s=10110, one query
+   expected      : |10110> (x) |-> ; P(10110) = 1 from ONE oracle query
+   Digital-QPU   : +0.7071|010110> -0.7071|110110>
+   reference     : +0.7071|010110> -0.7071|110110>
+   abs error 6.7e-16 | prob error 1.8e-15
+   demonstrates  : mathematical equivalence: exact amplitudes and probabilities (classical simulation)
+[PASS] existing implementation digital_qpu.bernstein_vazirani()
+   circuit/input : project's own BV circuit, s=101
+   expected      : P(101)=1.0000
+   Digital-QPU   : P(101)=1.0000
+   reference     : P(101)=1.0000
+   abs error 5.6e-16 | prob error 1.1e-15
+   demonstrates  : mathematical equivalence: exact probabilities; amplitudes vs reference (classical simulation)
+[PASS] BV s=101 sampled
+   circuit/input : own BV circuit
+   expected      : P(101)=1.0000
+   Digital-QPU   : P(101)=1.0000  [20000 shots, seed 20260926]
+   reference     : P(101)=1.0000
+   abs error n/a | prob error 0.0e+00
+   demonstrates  : statistical: sampled counts consistent with exact probabilities (classical pseudo-random sampling)
+   note          : worst deviation 0.00 sigma (limit 5)
+
+== 5 Deutsch-Jozsa ==
+[PASS] constant 0
+   circuit/input : DJ oracle: constant 0
+   expected      : P(000) = 1 (constant)
+   Digital-QPU   : P(000)=1.0000
+   reference     : P(000)=1.0000
+   abs error 5.6e-16 | prob error 1.1e-15
+   demonstrates  : mathematical equivalence: exact probabilities; amplitudes vs reference (classical simulation)
+[PASS] constant 1
+   circuit/input : DJ oracle: constant 1
+   expected      : P(000) = 1 (constant)
+   Digital-QPU   : P(000)=1.0000
+   reference     : P(000)=1.0000
+   abs error 5.6e-16 | prob error 1.1e-15
+   demonstrates  : mathematical equivalence: exact probabilities; amplitudes vs reference (classical simulation)
+[PASS] balanced s=001
+   circuit/input : DJ oracle: balanced s=001
+   expected      : P(000) = 0 (balanced); for f(x) = s.x the output is exactly |001>
+   Digital-QPU   : P(001)=1.0000
+   reference     : P(001)=1.0000
+   abs error 4.4e-16 | prob error 1.1e-15
+   demonstrates  : mathematical equivalence: exact probabilities; amplitudes vs reference (classical simulation)
+[PASS] balanced s=110
+   circuit/input : DJ oracle: balanced s=110
+   expected      : P(000) = 0 (balanced); for f(x) = s.x the output is exactly |110>
+   Digital-QPU   : P(110)=1.0000
+   reference     : P(110)=1.0000
+   abs error 4.4e-16 | prob error 1.1e-15
+   demonstrates  : mathematical equivalence: exact probabilities; amplitudes vs reference (classical simulation)
+[PASS] balanced s=111
+   circuit/input : DJ oracle: balanced s=111
+   expected      : P(000) = 0 (balanced); for f(x) = s.x the output is exactly |111>
+   Digital-QPU   : P(111)=1.0000
+   reference     : P(111)=1.0000
+   abs error 4.4e-16 | prob error 1.1e-15
+   demonstrates  : mathematical equivalence: exact probabilities; amplitudes vs reference (classical simulation)
+[PASS] existing implementation deutsch_jozsa('balanced')
+   circuit/input : project's own DJ circuit
+   expected      : P(000) = 0
+   Digital-QPU   : P(111)=1.0000
+   reference     : P(111)=1.0000
+   abs error n/a | prob error 1.1e-15
+   demonstrates  : mathematical equivalence: exact probabilities; amplitudes vs reference (classical simulation)
+[PASS] existing implementation deutsch_jozsa('constant')
+   circuit/input : project's own DJ circuit
+   expected      : P(000) = 1
+   Digital-QPU   : P(000)=1.0000
+   reference     : P(000)=1.0000
+   abs error n/a | prob error 1.1e-15
+   demonstrates  : mathematical equivalence: exact probabilities; amplitudes vs reference (classical simulation)
+[PASS] DJ constant sampled
+   circuit/input : constant 0
+   expected      : P(000)=1.0000
+   Digital-QPU   : P(000)=1.0000  [20000 shots, seed 20260926]
+   reference     : P(000)=1.0000
+   abs error n/a | prob error 0.0e+00
+   demonstrates  : statistical: sampled counts consistent with exact probabilities (classical pseudo-random sampling)
+   note          : worst deviation 0.00 sigma (limit 5)
+
+== 6 Grover ==
+[PASS] 2 qubits, marked 10, 1 iteration(s)
+   circuit/input : Grover n=2, k=1
+   expected      : P(10) = sin^2(3 asin(1/sqrt(4))) = 1.000000 (uniform would be 0.2500)
+   Digital-QPU   : P(10)=1.0000
+   reference     : P(10)=1.0000
+   abs error 4.4e-16 | prob error 8.9e-16
+   demonstrates  : mathematical equivalence: exact probabilities; amplitudes vs reference (classical simulation)
+[PASS] 3 qubits, marked 101, 2 iteration(s)
+   circuit/input : Grover n=3, k=2
+   expected      : P(101) = sin^2(5 asin(1/sqrt(8))) = 0.945313 (uniform would be 0.1250)
+   Digital-QPU   : P(001)=0.0078 P(100)=0.0078 P(101)=0.9453 P(111)=0.0078 (+4 more)
+   reference     : P(000)=0.0078 P(001)=0.0078 P(011)=0.0078 P(101)=0.9453 (+4 more)
+   abs error 1.4e-15 | prob error 2.3e-15
+   demonstrates  : mathematical equivalence: exact probabilities; amplitudes vs reference (classical simulation)
+[PASS] 4 qubits, marked 1011, 3 iteration(s)
+   circuit/input : Grover n=4, k=3
+   expected      : P(1011) = sin^2(7 asin(1/sqrt(16))) = 0.961319 (uniform would be 0.0625)
+   Digital-QPU   : P(0001)=0.0026 P(0010)=0.0026 P(1000)=0.0026 P(1011)=0.9613 (+12 more)
+   reference     : P(0111)=0.0026 P(1000)=0.0026 P(1010)=0.0026 P(1011)=0.9613 (+12 more)
+   abs error 2.7e-15 | prob error 5.2e-15
+   demonstrates  : mathematical equivalence: exact probabilities; amplitudes vs reference (classical simulation)
+[PASS] existing implementation digital_qpu.grover3()
+   circuit/input : project's own Grover circuit (Toffoli-based)
+   expected      : P(000)=0.0078 P(001)=0.0078 P(010)=0.0078 P(101)=0.9453 (+4 more)
+   Digital-QPU   : P(000)=0.0078 P(010)=0.0078 P(100)=0.0078 P(101)=0.9453 (+4 more)
+   reference     : P(000)=0.0078 P(010)=0.0078 P(100)=0.0078 P(101)=0.9453 (+4 more)
+   abs error 2.9e-15 | prob error 5.8e-15
+   demonstrates  : mathematical equivalence: exact probabilities; amplitudes vs reference (classical simulation)
+[PASS] Grover 3 qubits sampled
+   circuit/input : Grover n=3, k=2
+   expected      : P(000)=0.0078 P(001)=0.0078 P(010)=0.0078 P(101)=0.9453 (+4 more)
+   Digital-QPU   : P(000)=0.0094 P(001)=0.0086 P(010)=0.0087 P(101)=0.9409 (+4 more)  [20000 shots, seed 20260926]
+   reference     : P(000)=0.0078 P(001)=0.0078 P(011)=0.0078 P(101)=0.9453 (+4 more)
+   abs error n/a | prob error 4.4e-03
+   demonstrates  : statistical: sampled counts consistent with exact probabilities (classical pseudo-random sampling)
+   note          : worst deviation 2.74 sigma (limit 5)
+
+== 7 QFT ==
+[PASS] QFT|1> on 2 qubits
+   circuit/input : prepare |01>, QFT
+   expected      : N^-1/2 sum_y exp(2 pi i 1 y / 4) |y>
+   Digital-QPU   : +0.5000|00> +0.5000i|01> -0.5000|10> -0.5000i|11>
+   reference     : +0.5000|00> +0.5000i|01> -0.5000|10> -0.5000i|11>
+   abs error 1.3e-16 | prob error 1.1e-16
+   demonstrates  : mathematical equivalence: exact amplitudes and probabilities (classical simulation)
+[PASS] QFT|2> on 2 qubits
+   circuit/input : prepare |10>, QFT
+   expected      : N^-1/2 sum_y exp(2 pi i 2 y / 4) |y>
+   Digital-QPU   : +0.5000|00> -0.5000|01> +0.5000|10> -0.5000|11>
+   reference     : +0.5000|00> -0.5000|01> +0.5000|10> -0.5000|11>
+   abs error 2.1e-16 | prob error 1.1e-16
+   demonstrates  : mathematical equivalence: exact amplitudes and probabilities (classical simulation)
+[PASS] QFT|3> on 2 qubits
+   circuit/input : prepare |11>, QFT
+   expected      : N^-1/2 sum_y exp(2 pi i 3 y / 4) |y>
+   Digital-QPU   : +0.5000|00> -0.5000i|01> -0.5000|10> +0.5000i|11>
+   reference     : +0.5000|00> -0.5000i|01> -0.5000|10> +0.5000i|11>
+   abs error 2.3e-16 | prob error 1.1e-16
+   demonstrates  : mathematical equivalence: exact amplitudes and probabilities (classical simulation)
+[PASS] QFT|5> on 3 qubits
+   circuit/input : prepare |101>, QFT
+   expected      : N^-1/2 sum_y exp(2 pi i 5 y / 8) |y>
+   Digital-QPU   : +0.3536|000> (-0.2500-0.2500i)|001> +0.3536i|010> (+0.2500-0.2500i)|011> (+4 more)
+   reference     : (-0.2500-0.2500i)|001> (+0.2500-0.2500i)|011> (+0.2500+0.2500i)|101> (-0.2500+0.2500i)|111> (+4 more)
+   abs error 9.2e-16 | prob error 9.7e-17
+   demonstrates  : mathematical equivalence: exact amplitudes and probabilities (classical simulation)
+[PASS] QFT|11> on 4 qubits
+   circuit/input : prepare |1011>, QFT
+   expected      : N^-1/2 sum_y exp(2 pi i 11 y / 16) |y>
+   Digital-QPU   : (+0.2310+0.0957i)|0011> (+0.0957-0.2310i)|0111> (-0.2310-0.0957i)|1011> (-0.0957+0.2310i)|1111> (+12 more)
+   reference     : (-0.0957-0.2310i)|0001> (+0.2310+0.0957i)|0011> (+0.0957-0.2310i)|0111> (+0.0957+0.2310i)|1001> (+12 more)
+   abs error 2.2e-15 | prob error 1.1e-16
+   demonstrates  : mathematical equivalence: exact amplitudes and probabilities (classical simulation)
+[PASS] QFT of a superposition (3 qubits)
+   circuit/input : ry(0.4), ry(1.1), ry(2.3), then QFT
+   expected      : sqrt(N) * numpy.fft.ifft(input amplitudes)
+   Digital-QPU   : +0.7572|000> (-0.1572-0.1258i)|001> +0.5020|100> (-0.1572+0.1258i)|111> (+4 more)
+   reference     : +0.7572|000> (-0.1572-0.1258i)|001> +0.5020|100> (-0.1572+0.1258i)|111> (+4 more)
+   abs error 4.4e-16 | prob error 6.7e-16
+   demonstrates  : mathematical equivalence: exact amplitudes and probabilities (classical simulation)
+[PASS] phase estimation with the project's inverse QFT
+   circuit/input : existing phase_estimation(k=5, n=3)
+   expected      : phase 5/8 read exactly as 101: P(101) = 1
+   Digital-QPU   : P(101)=1.0000
+   reference     : P(101)=1.0000
+   abs error 4.5e-16 | prob error 8.9e-16
+   demonstrates  : mathematical equivalence: exact probabilities; amplitudes vs reference (classical simulation)
+
+== 8 Shor N=15 ==
+[PASS] period-finding register, a=7 (8 qubits)
+   circuit/input : project's shor15() circuit
+   expected      : period r=4 -> y in {0,4,8,12}, each 1/4
+   Digital-QPU   : P(0000)=0.2500 P(0100)=0.2500 P(1000)=0.2500 P(1100)=0.2500
+   reference     : P(0000)=0.2500 P(0100)=0.2500 P(1000)=0.2500 P(1100)=0.2500
+   abs error 5.0e-16 | prob error 8.9e-16
+   demonstrates  : mathematical equivalence: exact probabilities; amplitudes vs reference (classical simulation)
+   note          : the circuit is 'compiled' for this case: it uses 7^4 = 1 mod 15 to omit gates, i.e. knowledge of the answer is built in (a known caveat of small Shor demos)
+[PASS] classical post-processing of the exact distribution
+   circuit/input : continued fractions + gcd on each y
+   expected      : y=4,12 -> r=4 -> 15 = 3 x 5; y=0,8 give no factors; success probability 0.5
+   Digital-QPU   : y=0: r=None, factors=None; y=4: r=4, factors=[3, 5]; y=8: r=2, factors=None; y=12: r=4, factors=[3, 5]; success = 0.5000
+   reference     : exact: 0.5
+   abs error n/a | prob error 1.1e-16
+   demonstrates  : mathematical equivalence: exact probabilities; amplitudes vs reference (classical simulation)
+[PASS] Shor sampled
+   circuit/input : shor15(), 20000 shots
+   expected      : P(0000)=0.2500 P(0100)=0.2500 P(1000)=0.2500 P(1100)=0.2500
+   Digital-QPU   : P(0000)=0.2501 P(0100)=0.2501 P(1000)=0.2530 P(1100)=0.2467  [20000 shots, seed 20260926]
+   reference     : P(0000)=0.2500 P(0100)=0.2500 P(1000)=0.2500 P(1100)=0.2500
+   abs error n/a | prob error 3.3e-03
+   demonstrates  : statistical: sampled counts consistent with exact probabilities (classical pseudo-random sampling)
+   note          : worst deviation 1.08 sigma (limit 5)
+[PASS] end-to-end pipeline on sampled counts
+   circuit/input : project's shor_factors() vs this suite's pipeline
+   expected      : both find r=4 and 15 = 3 x 5
+   Digital-QPU   : project: r=4, factors=[3, 5]
+   reference     : suite: r=4, factors=[3, 5]
+   abs error n/a | prob error n/a
+   demonstrates  : mathematical equivalence: exact probabilities; amplitudes vs reference (classical simulation)
+   note          : small-N factoring is a correctness demo, NOT quantum advantage: 15 is factored classically in microseconds
+
+== summary ==
+  1 single-qubit            47/47  passed
+  2 interference            12/12  passed
+  3 Bell state               5/5   passed
+  4 Bernstein-Vazirani       8/8   passed
+  5 Deutsch-Jozsa            8/8   passed
+  6 Grover                   5/5   passed
+  7 QFT                      7/7   passed
+  8 Shor N=15                4/4   passed
+  TOTAL                     96/96  passed
+
+Verified here (as mathematics, by classical simulation, against an independent reference):
+  + gate action of X, Y, Z, H, S, T, Sdg, Tdg, SX, RX, RY, RZ, P on |0>, |1>, |+>, including phases
+  + state normalization and probability conservation (random circuits up to 5 qubits)
+  + gate identities including relative/global phase (HH=I, SS=Z, TT=S, HZH=X, HYH=-Y, XY=iZ, ...)
+  + single-qubit interference: cancellation of amplitudes, P(0) = cos^2(phi/2) phase sweep
+  + Bell state amplitudes; perfect Z-basis correlation in sampling; X-basis correlation that a classical mixture would not show; CHSH value 2*sqrt(2) of the simulated state
+  + Bernstein-Vazirani (n = 3, 4, 5) and Deutsch-Jozsa (constant/balanced) outputs, one oracle query
+  + Grover amplification on 2, 3, 4 qubits matching sin^2((2k+1) theta)
+  + QFT amplitudes on basis and superposition inputs (vs analytic formula and numpy FFT); phase estimation
+  + Shor N=15, a=7: exact period-finding distribution, classical post-processing, sampled end-to-end run
+  + sampling: measured frequencies consistent with exact probabilities; impossible outcomes never sampled
+NOT verified or demonstrated:
+  - any PHYSICAL quantum behaviour: amplitudes are numbers in classical memory, not qubits
+  - quantum speedup or advantage: simulation cost grows as 2^n; nothing here is faster than classical
+  - Bell nonlocality: a computed CHSH value is a prediction, not a physical Bell-inequality experiment
+  - true randomness: measurement outcomes come from a seeded pseudo-random generator
+  - realism of the noisy chips (dq-5, dq-12) against real hardware data - this suite uses the ideal device
+  - Shor beyond N=15, a=7; the circuit uses knowledge of the period (compiled demo), and small-N factoring is not evidence of advantage
+  - behaviour beyond ~20 qubits (ideal) / 16 noisy qubits, mid-circuit measurement, classical control
+  - full independence of the reference: same author, same NumPy; the Qiskit cross-check (tests/test_qiskit.py) is the most independent comparison
