@@ -69,6 +69,13 @@ answer: readout 0.050, linear 0.035, MLP 0.032 (floor 0.009). The MLP is better 
 makes a result worse than readout alone more often (12% vs 6% of circuit-runs; worst +0.032 vs
 +0.009). Use `learned-linear` when avoiding occasional bad corrections matters more.
 
+## Speed
+
+    digital-qpu speed --save baseline.json   # where does the time go? (measurement only)
+
+Reports the ideal and noisy engines' time and memory as qubits grow, the cost of each noise
+feature, real workloads, and a profile of the most expensive functions.
+
 ## How it works
 
 | Layer | What it does |

@@ -61,3 +61,10 @@ def test_cli(capsys):
     assert main(["run", "examples/bell.qasm", "--mitigate", "readout", "--shots", "200", "--seed", "1"]) == 0
     assert "readout-mitigated" in capsys.readouterr().out
 
+
+
+def test_mitigation_label_names_the_method(capsys):
+    from digital_qpu.__main__ import main
+    assert main(["run", "examples/bell.qasm", "--mitigate", "learned-linear", "--shots", "200", "--seed", "1"]) == 0
+    out = capsys.readouterr().out
+    assert "learned-linear-mitigated" in out and "readout-mitigated" not in out

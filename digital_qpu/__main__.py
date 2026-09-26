@@ -8,6 +8,7 @@
                   python -m digital_qpu benchmark [--device dq-5] [--day N] [--shots 4000]
                   python -m digital_qpu algorithms [--device dq-5] [--shots 2000]   (famous quantum algorithms)
                   python -m digital_qpu shor [--shots 2000]                         (factor 15, step by step)
+                  python -m digital_qpu speed [--quick] [--save FILE.json]         (where does the time go?)
                   run / compile / rb / zz also take --day N; run also takes --mitigate readout|learned|learned-linear"""
 import argparse
 import numpy as np
@@ -66,6 +67,9 @@ def main(argv=None):
     sh = sub.add_parser("shor", help="Shor's algorithm factoring 15, step by step")
     sh.add_argument("--shots", type=int, default=2000)
     sh.add_argument("--seed", type=int, default=1)
+    sp = sub.add_parser("speed", help="speed benchmark: where does the time go? (changes nothing)")
+    sp.add_argument("--quick", action="store_true")
+    sp.add_argument("--save", default=None, help="write results to a JSON file (a baseline to compare against)")
     hi = sub.add_parser("history", help="how one qubit's calibration drifted over days")
     hi.add_argument("--device", default="dq-5")
     hi.add_argument("--qubit", type=int, default=0)
@@ -123,6 +127,14 @@ def main(argv=None):
             closed = (avg["readout_tvd"] - avg[k]) / gap * 100 if gap > 0 else 0.0
             verdict = "beats" if avg[k] < avg["readout_tvd"] else "does NOT beat"
             print(f"  {name}: {verdict} the readout baseline; closes {closed:.0f}% of the gap to the shot-noise floor")
+        return 0
+    if a.cmd == "speed":
+        from .perf import run, print_report, save
+        res = run(quick=a.quick)
+        print_report(res)
+        if a.save:
+            save(res, a.save)
+            print(f"saved to {a.save}")
         return 0
     if a.cmd == "algorithms":
         from .algorithms import all_algorithms
@@ -223,7 +235,7 @@ def main(argv=None):
     for k, c in res["counts"].items():
         print(f"  {k}  {c:>6}  {'#' * round(40 * c / res['shots'])}")
     if "mitigated" in res:
-        print("readout-mitigated probabilities:")
+        print(f"{res['mitigation']}-mitigated probabilities:")
         for k, v in sorted(res["mitigated"].items(), key=lambda kv: -kv[1])[:8]:
             print(f"  {k}  {v:6.3f}  {'#' * round(40 * v)}")
     return 0

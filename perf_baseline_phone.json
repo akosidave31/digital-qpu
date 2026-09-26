@@ -1,0 +1,143 @@
+{
+ "python": "3.14.6",
+ "numpy": "2.4.4",
+ "machine": "aarch64",
+ "ideal": [
+  {
+   "qubits": 10,
+   "seconds": 0.0021943849860690534,
+   "state_MB": 0.016384
+  },
+  {
+   "qubits": 14,
+   "seconds": 0.015230769000481814,
+   "state_MB": 0.262144
+  },
+  {
+   "qubits": 18,
+   "seconds": 0.256978461984545,
+   "state_MB": 4.194304
+  },
+  {
+   "qubits": 20,
+   "seconds": 1.1426983840065077,
+   "state_MB": 16.777216
+  }
+ ],
+ "noisy": [
+  {
+   "qubits": 2,
+   "seconds": 0.008808846003375947,
+   "state_MB": 0.000256,
+   "native_ops": 10
+  },
+  {
+   "qubits": 4,
+   "seconds": 0.0503690000041388,
+   "state_MB": 0.004096,
+   "native_ops": 24
+  },
+  {
+   "qubits": 6,
+   "seconds": 0.2182003080379218,
+   "state_MB": 0.065536,
+   "native_ops": 38
+  },
+  {
+   "qubits": 8,
+   "seconds": 3.8959739239653572,
+   "state_MB": 1.048576,
+   "native_ops": 52
+  }
+ ],
+ "features": [
+  {
+   "noise": "none",
+   "seconds": 0.041909846011549234
+  },
+  {
+   "noise": "gates",
+   "seconds": 0.38956338400021195
+  },
+  {
+   "noise": "thermal",
+   "seconds": 0.32696715398924425
+  },
+  {
+   "noise": "crosstalk",
+   "seconds": 0.0905239999992773
+  },
+  {
+   "noise": "gates+thermal+crosstalk",
+   "seconds": 0.7290999229880981
+  }
+ ],
+ "workloads": {
+  "compile_grover3_dq5": 0.01604823098750785,
+  "train_per_circuit": 0.3230808999971487,
+  "rb_qubit0": 12.81353261595359
+ },
+ "profile_total_s": 1.2838016150000002,
+ "profile_top": [
+  {
+   "function": "numeric.py:tensordot",
+   "calls": 8610,
+   "own_s": 0.26630637,
+   "share": 0.2074357649098299
+  },
+  {
+   "function": "nqubit.py:_on_axes",
+   "calls": 8610,
+   "own_s": 0.11756543200000001,
+   "share": 0.09157601192143694
+  },
+  {
+   "function": "~:<method 'reshape' of 'numpy.ndarray' objects>",
+   "calls": 47389,
+   "own_s": 0.117484404,
+   "share": 0.0915128962507186
+  },
+  {
+   "function": "numeric.py:normalize_axis_tuple",
+   "calls": 21360,
+   "own_s": 0.100010577,
+   "share": 0.07790189374391773
+  },
+  {
+   "function": "numeric.py:moveaxis",
+   "calls": 8610,
+   "own_s": 0.069588725,
+   "share": 0.05420520132310317
+  },
+  {
+   "function": "~:<built-in method math.prod>",
+   "calls": 34440,
+   "own_s": 0.06309228700000001,
+   "share": 0.04914488832450955
+  },
+  {
+   "function": "~:<built-in method builtins.sum>",
+   "calls": 579,
+   "own_s": 0.051803581,
+   "share": 0.04035170262657754
+  },
+  {
+   "function": "_shape_base_impl.py:kron",
+   "calls": 1035,
+   "own_s": 0.045881500000000006,
+   "share": 0.0357387772876419
+  },
+  {
+   "function": "~:<built-in method builtins.len>",
+   "calls": 132365,
+   "own_s": 0.036658528,
+   "share": 0.028554667303483643
+  },
+  {
+   "function": "~:<method 'transpose' of 'numpy.ndarray' objects>",
+   "calls": 25830,
+   "own_s": 0.033867415000000005,
+   "share": 0.02638056737450046
+  }
+ ]
+}

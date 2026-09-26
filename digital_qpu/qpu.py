@@ -55,6 +55,8 @@ class QPU:
                 "clbit_qubits": {c: q for q, c in program.measures.items()},
                 "n_clbits": max(program.n_clbits, max(program.measures.values()) + 1),
                 "elapsed_s": round(time.time() - t0, 4)}
+            if mitigate is not None:
+                job._result["mitigation"] = mitigate
             if mitigate == "readout":
                 from .mitigation import readout_mitigate, distribution
                 job._result["mitigated"] = readout_mitigate(distribution(counts), self.device,

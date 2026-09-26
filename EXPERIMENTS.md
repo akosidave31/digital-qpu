@@ -51,3 +51,10 @@ Result (5 calibration days, models retrained each day, 10 circuits each):
   (`learned-linear`).
 - Next: reduce the MLP's harm (v0.8.0). Suspects: the "blur toward uniform" assumption (T1 pulls
   toward 0, not uniform) and over-sharpening results whose true answer is spread out.
+
+## v0.8.1 - performance baseline (measure before optimizing)
+
+Goal: faster runs (raw speed) and more noisy qubits (capacity), in that order, each measured
+against this baseline. Suspects before measuring: every gate copies the whole state; the 2-qubit
+gate error loops over 15 Pauli terms in Python. To be confirmed or ruled out by the profile.
+Result: (pending)
