@@ -120,6 +120,7 @@ feature, real workloads, and a profile of the most expensive functions.
 | `mitigation.py` | benchmark suite with exactly known answers; readout-error mitigation (undo the day's readout errors); distance-to-truth metrics |
 | `rb.py` | randomized benchmarking: measures the device's error per gate, like a real lab |
 | `qpu.py` | jobs: submit a program, get a job id, status and result |
+| `variational.py` | trainable Grover circuit (parameter-shift gradients, Adam): noise-aware circuit optimisation |
 | `server.py` | web API: the same jobs over HTTP, with a background worker and input checks |
 
 Devices: `ideal` (20 qubits, no noise), `dq-5` (5 noisy qubits in a line q0-q1-q2-q3-q4) and
@@ -228,6 +229,7 @@ ignores which qubits have the lowest error today.
 12. Reduce learned mitigation's harm: conservative correction (v0.13.0)
 13. Web API: submit jobs over HTTP, like a quantum cloud service (v0.14.0)
 14. App on top of the API
+15. Trainable Grover: variational circuit trained on the noisy chip (v0.16.0, `notebooks/train_grover.ipynb`)
 
 See EXPERIMENTS.md for investigations and the decisions they led to.
 

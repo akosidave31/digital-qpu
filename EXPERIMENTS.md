@@ -232,3 +232,20 @@ state), BV, DJ, Grover 2-4 qubits, QFT, phase estimation, Shor N=15 incl. post-p
 Not verified: physical quantum behaviour, speedup, physical Bell nonlocality, true randomness, noisy-chip
 realism vs real hardware, Shor beyond N=15/a=7 (and that circuit uses knowledge of the period).
 Phone confirmation (Termux): full test suite 270 passed, 2 slow skipped (includes all 96 validation cases).
+
+## v0.16.0 - trainable Grover circuit (variational)
+
+Question: can training the single-qubit angles of the 3-qubit Grover circuit beat fixed Grover on the
+noisy dq-5 chip (37% with shots in v0.11.0), while keeping its two-qubit structure (oracle and CCZs fixed)?
+Method: digital_qpu/variational.py. Each H/X layer becomes a trainable rz-ry-rz layer per qubit (45
+parameters for 2 rounds, 27 for 1). Fixed Grover is one point of this space and is the starting point.
+Reward = exact probability of the marked answer; gradient by parameter shift (exact on ideal, approximate
+on noisy chips because the compiler's pulse count depends on the angle); Adam, lr 0.05, 40 epochs.
+Trained on ideal and on dq-5 (nominal calibration); tested on dq-5 calibration days 1-10, never seen.
+Run on Colab: notebooks/train_grover.ipynb.
+Limits: the reward needs the marked item, so this is circuit optimisation for a known task, not a better
+search; classical simulation, no speedup.
+Targets (set before running): tests pass; the trainable circuit at its Grover point reproduces fixed Grover
+exactly (94.53% ideal, 2 rounds; test); ideal best trained >= 0.99; dq-5 best trained >= 0.45;
+unseen days: best dq-5-trained circuit minus fixed Grover >= +0.05 on average.
+Result: (pending)
