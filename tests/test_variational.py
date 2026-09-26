@@ -103,3 +103,57 @@ def test_summary_ignores_specialised_circuits():
     assert text.count("SPECIALISED") == 2
     assert "best valid trained 0.9800" in text                               # the 0.99 run does not count
     assert "dq-5-trained/rounds2 minus best fixed (fixed/rounds1)" in text   # the specialised 0.60 is ignored
+
+
+# ---- v0.18.0: trainable phases (Long's exact Grover) ----
+from digital_qpu.variational import PhaseGrover, long_phase, phase_factory, fixed_phase_form_mean, summarize_phase
+
+
+def test_phase_form_at_pi_is_exactly_grover():
+    th = math.asin(1 / math.sqrt(8))
+    for layers in (False, True):
+        for m in (0, 5, 7):
+            pg = PhaseGrover(marked=m, rounds=2, train_layers=layers)
+            assert abs(pg.success(pg.grover_init(math.pi), IDEAL) - math.sin(5 * th) ** 2) < 1e-9
+    assert abs(fixed_phase_form_mean(IDEAL, 2) - math.sin(5 * th) ** 2) < 1e-9
+    assert PhaseGrover(rounds=2).n_params == 4 and PhaseGrover(rounds=2, train_layers=True).n_params == 49
+
+
+def test_hundred_percent_is_reachable_with_two_rounds():
+    """Scan one common phase for all oracle and diffusion calls: some phase must give ~100%."""
+    pg = PhaseGrover(marked=5, rounds=2)
+    best = max(pg.success(np.full(4, phi), IDEAL) for phi in np.linspace(0, 2 * math.pi, 721))
+    assert best > 0.999
+
+
+def test_long_phase_formula():
+    pg = PhaseGrover(marked=5, rounds=2)
+    lp = long_phase(2)
+    assert 2.12 < lp < 2.14 and long_phase(1) is None
+    assert max(pg.success(np.full(4, lp), IDEAL), pg.success(np.full(4, 2 * math.pi - lp), IDEAL)) > 0.9999
+
+
+def test_phase_gradient_matches_finite_differences():
+    pg = PhaseGrover(marked=3, rounds=1, train_layers=True)
+    p = np.random.default_rng(13).uniform(-3, 3, pg.n_params)
+    g = pg.gradient(p, IDEAL)
+    eps = 1e-4
+    for k in list(pg.phase_params) + [0, 4, 11]:
+        e = np.zeros(pg.n_params)
+        e[k] = eps
+        fd = (pg.success(p + e, IDEAL) - pg.success(p - e, IDEAL)) / (2 * eps)
+        assert abs(fd - g[k]) < 1e-6, k
+
+
+def test_phase_summary():
+    run = lambda best, spread, phases=None: {"best": best, "ideal_spread": spread, "phases": phases or []}
+    runs = {"ideal/rounds2/phases": run(0.999, 0.0, [2.13, 2.12, 2.14, 2.13]),
+            "ideal/rounds2/phases+layers": run(0.9995, 0.3), "dq-5/rounds2/phases": run(0.40, 0.01),
+            "dq-5/rounds1/phases": run(0.46, 0.01)}
+    test = {d: {"fixed/rounds2": 0.35, "fixed/rounds1": 0.44, "fixed-phaseform/rounds2": 0.33,
+                "fixed-phaseform/rounds1": 0.42, "ideal/rounds2/phases": 0.3, "ideal/rounds2/phases+layers": 0.3,
+                "dq-5/rounds2/phases": 0.37, "dq-5/rounds1/phases": 0.47} for d in range(1, 4)}
+    text = "\n".join(summarize_phase({"runs": runs, "test": test, "long_phase": long_phase(2)}))
+    assert "T1 ideal: fixed Grover 0.9453 -> best valid trained 0.9990  target >= 0.99: MET" in text
+    assert "within 0.1 rad: MET" in text and "SPECIALISED" in text
+    assert "dq-5/rounds1/phases minus best fixed (fixed/rounds1)" in text

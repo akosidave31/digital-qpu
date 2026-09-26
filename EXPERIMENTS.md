@@ -296,3 +296,24 @@ on every unseen day; (2) it is noise-aware: angles trained on the ideal chip giv
 (+0.2), angles trained on dq-5 give +1.1; (3) confirmed with all 8 marked items: on the noisy chip fixed
 Grover with 1 round beats 2 rounds by 8.3 points (0.4386 vs 0.3555) - circuit length matters far more
 than tuning angles.
+
+## v0.18.0 - trainable phases in the oracle and diffusion (Long's exact Grover)
+
+Question: v0.17.0 missed its ideal target (0.9585 < 0.97) by training only single-qubit angles. Theory
+(G.L. Long, 2001): if the oracle and diffusion apply a phase phi instead of pi, 2 rounds find the item in
+8 with CERTAINTY when phi = 2 arcsin(sin(pi/10) / sin(beta)), beta = arcsin(1/sqrt 8), i.e. phi = about 2.13
+(or its mirror 2 pi - phi, about 4.16). Can joint training (all 8 marked items, no memorisation possible)
+find that?
+Change: PhaseGrover - each oracle call and each diffusion gets one trainable phase (a doubly-controlled
+phase gate; at pi it is the usual CCZ). The oracle is still one call per round marking the same item;
+only its phase is adjustable. Option: also train the rz-ry-rz layers. Cost: the phase-form CCZ uses 8
+CNOTs vs 6 in the Toffoli form, so on noisy chips its fixed version (phase pi) is the fair same-gates baseline.
+Start: layers at Grover, phases at pi - 0.3 (at exactly pi the phase gradient is zero by symmetry).
+Joint training, parameter shift with chain rule, Adam, lr 0.1, 60 epochs. Runs: ideal phases-only 2 rounds;
+ideal phases+layers 2 rounds; dq-5 phases-only 2 rounds and 1 round. Unseen: dq-5 days 1-10.
+Memorisation check as in v0.17.0 (spread <= 0.10 on the ideal chip, else it does not count).
+Targets (set before running): tests pass (including: some common phase reaches > 99.9% with 2 rounds, and
+Long's formula gives > 99.99%); T1 ideal best valid trained mean >= 0.99; T2 the 4 learned phases of the
+ideal phases-only run each within 0.1 rad of Long's phi (or its mirror); T3 unseen days: best valid dq-5
+trained circuit minus the best fixed circuit (Toffoli or phase form, 1 or 2 rounds) >= +0.02.
+Result: (pending)

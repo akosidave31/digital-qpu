@@ -89,8 +89,9 @@ class VariationalGrover:
             if isinstance(it, str):
                 body.append(it)
             else:
-                name, q, p = it
-                ang = float(params[p]) + (shift[1] if shift and shift[0] == i else 0.0)
+                name, q, p = it[:3]
+                coef = it[3] if len(it) > 3 else 1.0             # angle = coef * parameter (v0.18.0)
+                ang = coef * float(params[p]) + (shift[1] if shift and shift[0] == i else 0.0)
                 body.append(f"{name}({ang!r}) q[{q}];")
         return _program(3, 3, body, [(i, i) for i in range(3)])
 
@@ -102,14 +103,15 @@ class VariationalGrover:
         return float(probabilities(prog, device).get(self.key, 0.0))
 
     def gradient(self, params, device):
-        """Parameter-shift gradient of success (every gate has exactly one parameter here)."""
+        """Parameter-shift gradient of success; a gate whose angle is coef * parameter adds coef times its
+        shift derivative (chain rule), so one parameter may drive several gates."""
         g = np.zeros(self.n_params)
         for i, it in enumerate(self.items):
             if isinstance(it, str):
                 continue
             plus = self.success(params, device, (i, SHIFT))
             minus = self.success(params, device, (i, -SHIFT))
-            g[it[2]] += (plus - minus) / 2
+            g[it[2]] += (it[3] if len(it) > 3 else 1.0) * (plus - minus) / 2
         return g
 
     def train(self, device, params=None, epochs=40, lr=0.05, seed=0, log=None):
@@ -211,9 +213,10 @@ class JointGrover:
     """One shared set of angles, scored on the AVERAGE success over all 8 possible marked items.
     Memorising one answer cannot pay: it helps 1 of 8 oracles and hurts the others."""
 
-    def __init__(self, rounds=2):
+    def __init__(self, rounds=2, factory=None):
         self.rounds = rounds
-        self.circuits = [VariationalGrover(marked=m, rounds=rounds) for m in range(8)]
+        make = factory or (lambda m: VariationalGrover(marked=m, rounds=rounds))
+        self.circuits = [make(m) for m in range(8)]
         self.n_params = self.circuits[0].n_params
 
     def grover_init(self):
@@ -231,10 +234,11 @@ class JointGrover:
     train = VariationalGrover.train
 
 
-def per_item_spread(params, rounds, device=None):
+def per_item_spread(params, rounds, device=None, factory=None):
     """(per-item successes on the ideal chip, max - min). The memorisation check."""
     dev = device or get_device("ideal")
-    vals = [VariationalGrover(marked=m, rounds=rounds).success(np.asarray(params), dev) for m in range(8)]
+    make = factory or (lambda m: VariationalGrover(marked=m, rounds=rounds))
+    vals = [make(m).success(np.asarray(params), dev) for m in range(8)]
     return vals, max(vals) - min(vals)
 
 
@@ -306,6 +310,152 @@ def summarize_joint(out, train_device="dq-5"):
     diffs = np.array([r[best_key] - r[base_key] for r in T.values()])
     se = diffs.std(ddof=1) / math.sqrt(len(diffs)) if len(diffs) > 1 else float("nan")
     lines.append(f"unseen days ({len(diffs)}): {best_key} minus best fixed ({base_key}) = {diffs.mean():+.4f} "
+                 f"+/- {se:.4f} (better on {int((diffs > 0).sum())}/{len(diffs)} days)  target >= +0.02: "
+                 f"{'MET' if diffs.mean() >= 0.02 else 'MISSED'}")
+    return lines
+
+
+# ---------------------------------------------------------------------------------------------------
+# v0.18.0: trainable PHASES in the oracle and the diffusion (Long's exact Grover)
+# ---------------------------------------------------------------------------------------------------
+PHASE_START = math.pi - 0.3      # pi exactly is a symmetric point where the phase gradient is zero
+
+
+def long_phase(rounds=2, n_items=8):
+    """Long (2001): with oracle and diffusion phase phi, `rounds` iterations find the item with
+    certainty when phi = 2 arcsin(sin(pi / (4 rounds + 2)) / sin(beta)), beta = arcsin(1/sqrt(N));
+    None when that many rounds cannot reach 100%."""
+    beta = math.asin(1 / math.sqrt(n_items))
+    x = math.sin(math.pi / (4 * rounds + 2)) / math.sin(beta)
+    return 2 * math.asin(x) if x <= 1 else None
+
+
+def _ccp_items(p):
+    """Doubly-controlled phase diag(1,...,1, e^{i lambda}) on qubits 0,1,2 with lambda = params[p]:
+    cp(l/2)(1,2) cx(0,1) cp(-l/2)(1,2) cx(0,1) cp(l/2)(0,2), each cp(t) = p(t/2) cx p(-t/2) cx p(t/2).
+    Exact; at lambda = pi it is CCZ. Uses 8 CNOTs (the fixed Toffoli-based CCZ uses 6)."""
+    def cp(sign, x, y):
+        k = sign / 4
+        return [("p", x, p, k), f"cx q[{x}],q[{y}];", ("p", y, p, -k), f"cx q[{x}],q[{y}];", ("p", y, p, k)]
+    return cp(+1, 1, 2) + ["cx q[0],q[1];"] + cp(-1, 1, 2) + ["cx q[0],q[1];"] + cp(+1, 0, 2)
+
+
+class PhaseGrover(VariationalGrover):
+    """Grover with a trainable phase in every oracle call and every diffusion (one parameter each),
+    and optionally trainable rz-ry-rz layers as in VariationalGrover (train_layers=True).
+    The oracle is still one call per round marking the same item; only its phase is adjustable."""
+
+    def __init__(self, marked=0b101, rounds=2, train_layers=False):
+        self.n, self.marked, self.rounds, self.train_layers = 3, marked, rounds, train_layers
+        self.key = format(marked, "03b")
+        self.items, self.n_params = [], 0
+        self.slots, self.phase_params = [], []          # (first param, layer matrix), phase param indices
+        flips = [f"x q[{i}];" for i in range(3) if not marked >> i & 1]
+        self._add_layer(_H, ["h"])
+        for _ in range(rounds):
+            self.items += flips + _ccp_items(self._new_phase()) + flips          # oracle with phase
+            self._add_layer(_X @ _H, ["h", "x"])
+            self.items += _ccp_items(self._new_phase())                          # diffusion with phase
+            self._add_layer(_H @ _X, ["x", "h"])
+
+    def _new_phase(self):
+        self.phase_params.append(self.n_params)
+        self.n_params += 1
+        return self.n_params - 1
+
+    def _add_layer(self, U, fixed_gates):
+        if self.train_layers:
+            self.slots.append((self.n_params, U))
+            self._layer()
+        else:
+            self.items += [f"{g} q[{q}];" for g in fixed_gates for q in range(3)]
+
+    def grover_init(self, phase=PHASE_START):
+        p = np.zeros(self.n_params)
+        for start, U in self.slots:
+            p[start:start + 9] = [a for _ in range(3) for a in zyz(U)]
+        p[self.phase_params] = phase
+        return p
+
+
+def phase_factory(rounds, train_layers):
+    return lambda m: PhaseGrover(marked=m, rounds=rounds, train_layers=train_layers)
+
+
+def fixed_phase_form_mean(device, rounds):
+    """Fixed Grover written with the phase-form CCZ (phase = pi): the baseline with the same gate count."""
+    jg = JointGrover(rounds, phase_factory(rounds, False))
+    return jg.success(jg.circuits[0].grover_init(math.pi), device)
+
+
+def phase_experiment(epochs=60, lr=0.1, test_days=range(1, 11), train_device="dq-5", log=print):
+    """v0.18.0: joint training (all 8 marked items) of the oracle/diffusion phases. Runs:
+    ideal phases-only 2 rounds, ideal phases+layers 2 rounds, dq-5 phases-only 2 rounds and 1 round."""
+    ideal, chip = get_device("ideal"), get_device(train_device)
+    plan = [("ideal", ideal, 2, False), ("ideal", ideal, 2, True),
+            (train_device, chip, 2, False), (train_device, chip, 1, False)]
+    out = {"epochs": epochs, "lr": lr, "train_device": train_device, "long_phase": long_phase(2),
+           "runs": {}, "test": {}}
+    for dev_name, dev, rounds, layers in plan:
+        key = f"{dev_name}/rounds{rounds}/{'phases+layers' if layers else 'phases'}"
+        fac = phase_factory(rounds, layers)
+        jg = JointGrover(rounds, fac)
+        t0 = time.time()
+        p0 = jg.circuits[0].grover_init()
+        start = jg.success(p0, dev)
+        log(f"{key}: {jg.n_params} params, start (phases {PHASE_START:.3f}) mean {start:.4f}")
+        best, hist = jg.train(dev, p0, epochs=epochs, lr=lr,
+                              log=lambda t, s: log(f"   epoch {t:3d}  mean success {s:.4f}") if t % 5 == 0 else None)
+        items, spread = per_item_spread(best, rounds, factory=fac)
+        phases = [float(best[i] % (2 * math.pi)) for i in jg.circuits[0].phase_params]
+        out["runs"][key] = {"rounds": rounds, "layers": layers, "start": start, "best": max(hist), "history": hist,
+                            "params": best.tolist(), "phases": phases, "ideal_per_item": items,
+                            "ideal_spread": spread, "seconds": time.time() - t0}
+        log(f"   best mean {max(hist):.4f} | phases {' '.join(f'{x:.3f}' for x in phases)} | ideal per item "
+            f"{' '.join(f'{v:.2f}' for v in items)} spread {spread:.3f}  ({time.time() - t0:.0f} s)")
+    log(f"testing on {train_device} calibration days {list(test_days)} (never seen), mean over all 8 marked items")
+    for d in test_days:
+        dev = calibrate(chip, d)
+        row = {"fixed/rounds2": fixed_grover_mean(dev, 2), "fixed/rounds1": fixed_grover_mean(dev, 1),
+               "fixed-phaseform/rounds2": fixed_phase_form_mean(dev, 2),
+               "fixed-phaseform/rounds1": fixed_phase_form_mean(dev, 1)}
+        for key, r in out["runs"].items():
+            jg = JointGrover(r["rounds"], phase_factory(r["rounds"], r["layers"]))
+            row[key] = jg.success(np.array(r["params"]), dev)
+        out["test"][d] = row
+        log(f"   day {d:>2}: " + "  ".join(f"{k} {v:.3f}" for k, v in row.items()))
+    return out
+
+
+def summarize_phase(out, train_device="dq-5"):
+    """Verdicts for the v0.18.0 targets (EXPERIMENTS.md). Runs failing the spread check do not count."""
+    R, T = out["runs"], out["test"]
+    ok = lambda k: R[k]["ideal_spread"] <= SPREAD_LIMIT
+    lines = [f"memorisation check {k:32}: spread {R[k]['ideal_spread']:.3f} "
+             f"{'OK' if ok(k) else 'SPECIALISED - does not count'}" for k in R]
+    ideal_keys = [k for k in R if k.startswith("ideal/") and ok(k)]
+    ib = max((R[k]["best"] for k in ideal_keys), default=float("nan"))
+    lines.append(f"T1 ideal: fixed Grover 0.9453 -> best valid trained {ib:.4f}  target >= 0.99: "
+                 f"{'MET' if ideal_keys and ib >= 0.99 else 'MISSED'}")
+    lp = out["long_phase"]
+    k = "ideal/rounds2/phases"
+    ph = R[k]["phases"] if k in R else []
+    dist = lambda x: min(abs(x - lp), abs(x - (2 * math.pi - lp)))
+    close = bool(ph) and all(dist(x) <= 0.1 for x in ph)
+    lines.append(f"T2 learned phases {' '.join(f'{x:.3f}' for x in ph)} vs Long's {lp:.3f} (or {2 * math.pi - lp:.3f}): "
+                 f"within 0.1 rad: {'MET' if close else 'MISSED'}")
+    fixed_keys = ["fixed/rounds2", "fixed/rounds1", "fixed-phaseform/rounds2", "fixed-phaseform/rounds1"]
+    base = max(fixed_keys, key=lambda f: np.mean([r[f] for r in T.values()]))
+    chip_keys = [k for k in R if k.startswith(train_device + "/") and ok(k)]
+    if not chip_keys:
+        lines.append("T3 unseen days: no valid trained circuit -> MISSED")
+        return lines
+    best_key = max(chip_keys, key=lambda k: np.mean([r[k] for r in T.values()]))
+    diffs = np.array([r[best_key] - r[base] for r in T.values()])
+    se = diffs.std(ddof=1) / math.sqrt(len(diffs)) if len(diffs) > 1 else float("nan")
+    means = "  ".join(f"{f} {np.mean([r[f] for r in T.values()]):.4f}" for f in fixed_keys)
+    lines.append(f"unseen-day means of the fixed circuits: {means}")
+    lines.append(f"T3 unseen days ({len(diffs)}): {best_key} minus best fixed ({base}) = {diffs.mean():+.4f} "
                  f"+/- {se:.4f} (better on {int((diffs > 0).sum())}/{len(diffs)} days)  target >= +0.02: "
                  f"{'MET' if diffs.mean() >= 0.02 else 'MISSED'}")
     return lines
